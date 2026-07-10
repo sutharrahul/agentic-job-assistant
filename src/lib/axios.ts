@@ -1,0 +1,33 @@
+import axios from "axios";
+import { createClient } from "@/lib/supabase/client";
+
+// `api` is the ONE axios instance the whole app should import — never
+// call plain axios.get/post directly. That's what makes the interceptor
+// below actually useful: every request made through `api` automatically
+// gets the current user's auth token attached, so no component has to
+// remember to do that itself.
+export const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+});
+
+// An axios "request interceptor" is a function that runs on every
+// outgoing request before it's sent, and gets to modify it. Here, we use
+// that hook to read the current Supabase session and attach its token
+// as an Authorization header — this is what NestJS's SupabaseAuthGuard
+// verifies on the other end (see backend/src/auth/guards).
+// Note: this uses the BROWSER Supabase client (see supabase/client.ts),
+// so `api` only works correctly from Client Components — the browser
+// client reads the session from the browser's own storage. A Server
+// Component calling `api` wouldn't see the logged-in user's session.
+api.interceptors.request.use(async (config) => {
+  const supabase = createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+
+  return config;
+});
