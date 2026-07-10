@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { SupabaseModule } from './supabase/supabase.module';
 import { UsersModule } from './users/users.module';
 import { ResumesModule } from './resumes/resumes.module';
 import { ApplicationsModule } from './applications/applications.module';
@@ -18,6 +19,7 @@ import { OrchestrationModule } from './orchestration/orchestration.module';
     ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
     PrismaModule,
+    SupabaseModule,
     UsersModule,
     ResumesModule,
     ApplicationsModule,

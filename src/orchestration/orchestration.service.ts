@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
+import { ParseResumeResponse } from './orchestration.types';
 
 // This service is the ONLY place in the backend that talks to the FastAPI
 // AI service — every other module (Resumes, Applications) goes through
@@ -31,8 +32,8 @@ export class OrchestrationService {
     return data;
   }
 
-  parseResume(payload: unknown) {
-    return this.post('/parse-resume', payload);
+  parseResume(payload: { resume_url: string }) {
+    return this.post<ParseResumeResponse>('/parse-resume', payload);
   }
 
   parseJobDescription(payload: unknown) {

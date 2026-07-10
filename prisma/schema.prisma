@@ -20,6 +20,13 @@ enum ApplicationStatus {
   REJECTED
 }
 
+enum ResumeStatus {
+  PROCESSING
+  PARSED
+  CONFIRMED
+  FAILED
+}
+
 // User.id has NO @default(uuid()) — on purpose. Supabase Auth already
 // generates a UUID for every signed-up user (the JWT's `sub` claim).
 // This id must be set to THAT SAME uuid when the row is created, so a
@@ -40,8 +47,17 @@ model Resume {
   user         User          @relation(fields: [userId], references: [id])
   fileName     String
   storagePath  String
+  // Row is created as PROCESSING right when the upload+Storage write
+  // succeeds — before we know whether Gemini parsing will succeed —
+  // so there's always a record of the attempt, even if parsing fails.
+  status       ResumeStatus  @default(PROCESSING)
+  // Shape matches ai-service's ParsedResumeData exactly (summary,
+  // skills, experience[], education[], projects[]) — see
+  // ai-service/app/schemas/resume.py. Stored as-is from FastAPI's
+  // response, then overwritten with the user's edits on confirm.
   parsedData   Json?
   createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   applications Application[]
 }
 

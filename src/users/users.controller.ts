@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { SupabaseJwtPayload } from '../auth/guards/supabase-auth.guard';
@@ -18,5 +18,12 @@ export class UsersController {
     // user's row id in our own database (see the User model in
     // schema.prisma for why).
     return this.usersService.findByAuthId(user.sub);
+  }
+
+  @Post('sync')
+  sync(@CurrentUser() user: SupabaseJwtPayload) {
+    // Called by the frontend right after login/signup — see
+    // UsersService.upsertFromAuth for why this exists at all.
+    return this.usersService.upsertFromAuth(user.sub, user.email ?? '');
   }
 }
