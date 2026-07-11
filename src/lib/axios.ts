@@ -20,6 +20,16 @@ export const api = axios.create({
 // client reads the session from the browser's own storage. A Server
 // Component calling `api` wouldn't see the logged-in user's session.
 api.interceptors.request.use(async (config) => {
+  // DEV-ONLY AUTH BYPASS — mirrors backend's SupabaseAuthGuard (which
+  // has its OWN separate BYPASS_AUTH check, not just trusting this).
+  // There's no real Supabase session to fetch in bypass mode (auth was
+  // never actually performed), so skip straight past the lookup below
+  // rather than asking a possibly-fake/unconfigured Supabase project
+  // for a session that doesn't exist.
+  if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
+    return config;
+  }
+
   const supabase = createClient();
   const {
     data: { session },

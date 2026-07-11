@@ -9,7 +9,7 @@ export default function ResumePage() {
   const [resume, setResume] = useState<Resume | null>(null);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-8">
+    <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6 lg:p-8">
       <h1 className="text-2xl font-semibold">Resume</h1>
 
       {!resume && <ResumeUploadForm onUploaded={setResume} />}

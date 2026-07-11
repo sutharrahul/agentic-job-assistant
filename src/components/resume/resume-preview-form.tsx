@@ -11,9 +11,9 @@ import {
 } from "@/lib/types/resume";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TagInput } from "@/components/tag-input";
 
 const emptyExperience: ExperienceEntry = {
   title: "",
@@ -91,19 +91,10 @@ export function ResumePreviewForm({
           <CardTitle>Skills</CardTitle>
         </CardHeader>
         <CardContent>
-          <Label htmlFor="skills">Comma-separated</Label>
-          <Input
-            id="skills"
-            value={data.skills.join(", ")}
-            onChange={(e) =>
-              setData({
-                ...data,
-                skills: e.target.value
-                  .split(",")
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              })
-            }
+          <TagInput
+            value={data.skills}
+            onChange={(skills) => setData({ ...data, skills })}
+            placeholder="Add a skill and press Enter"
           />
         </CardContent>
       </Card>
@@ -300,22 +291,14 @@ export function ResumePreviewForm({
                   )
                 }
               />
-              <Input
-                placeholder="Technologies (comma-separated)"
-                value={entry.technologies.join(", ")}
-                onChange={(e) =>
-                  updateAt(
-                    data.projects,
-                    index,
-                    {
-                      technologies: e.target.value
-                        .split(",")
-                        .map((t) => t.trim())
-                        .filter(Boolean),
-                    },
-                    (projects) => setData({ ...data, projects }),
+              <TagInput
+                value={entry.technologies}
+                onChange={(technologies) =>
+                  updateAt(data.projects, index, { technologies }, (projects) =>
+                    setData({ ...data, projects }),
                   )
                 }
+                placeholder="Add a technology and press Enter"
               />
               <Button
                 variant="destructive"
