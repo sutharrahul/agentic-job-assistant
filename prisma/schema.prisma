@@ -70,10 +70,24 @@ model Application {
   company          String
   jobTitle         String
   jobDescription   String
+  location         String?
+  deadline         DateTime?
+  notes            String            @default("")
   status           ApplicationStatus @default(APPLIED)
   fitScore         Float?
+  // { matchedSkills: string[], missingSkills: string[], suggestions: string[] }
+  // — same JSON the ai-service /analyze-fit returns (snake_case mapped
+  // by NestJS before persisting). Stored as one blob because it's only
+  // ever read/written as a unit.
   skillGapAnalysis Json?
   coverLetter      String?
+  coverLetterTone  String?
+  // Human-in-the-loop flag: false when generated or after any manual
+  // edit; only true once the user explicitly clicks Approve.
+  coverLetterApproved Boolean        @default(false)
+  // { focusAreas, technicalQuestions: [{question, talkingPoints}],
+  //   behavioralQuestions: [...], gapsToPrepare } from /interview-prep.
+  interviewPrep    Json?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 }

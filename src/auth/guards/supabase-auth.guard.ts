@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
 import * as jwt from 'jsonwebtoken';
+import { MOCK_JWT_PAYLOAD } from '../mock-user';
 
 export interface SupabaseJwtPayload extends jwt.JwtPayload {
   sub: string;
@@ -31,6 +32,21 @@ export class SupabaseAuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<Request>();
+
+    // DEV-ONLY AUTH BYPASS — mirrors the frontend's
+    // NEXT_PUBLIC_BYPASS_AUTH (frontend/src/lib/auth/auth-context.tsx).
+    // This is a SEPARATE env var on THIS service, checked here instead
+    // of trusting anything the client sends — a client can't fake its
+    // way past this guard just because the frontend happens to be in
+    // bypass mode; this backend has to be deliberately configured the
+    // same way too. Skips real JWT verification entirely and pretends
+    // every request came from MOCK_JWT_PAYLOAD.
+    // !! MUST be "false" or unset in any shared/deployed environment !!
+    if (this.configService.get<string>('BYPASS_AUTH') === 'true') {
+      request.user = MOCK_JWT_PAYLOAD;
+      return true;
+    }
+
     const token = this.extractToken(request);
 
     if (!token) {

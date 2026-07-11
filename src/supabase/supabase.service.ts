@@ -2,17 +2,13 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Bucket name is intentionally a constant, not an env var — there's only
-// ever one resumes bucket, so making it "configurable" would just be a
-// setting nobody changes. Assumption flagged for review: this bucket
-// must exist in your Supabase project; onModuleInit below creates it if
-// it doesn't.
-const RESUME_BUCKET = 'resumes';
+const DEFAULT_RESUME_BUCKET = 'resumes';
 
 @Injectable()
 export class SupabaseService implements OnModuleInit {
   private readonly logger = new Logger(SupabaseService.name);
   private readonly client: SupabaseClient;
+  private readonly resumeBucket: string;
 
   constructor(private readonly configService: ConfigService) {
     // This client uses the SERVICE ROLE key, not the anon key the
@@ -26,18 +22,24 @@ export class SupabaseService implements OnModuleInit {
       this.configService.getOrThrow<string>('SUPABASE_URL'),
       this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
     );
+    this.resumeBucket =
+      this.configService.get<string>('SUPABASE_STORAGE_BUCKET') ??
+      DEFAULT_RESUME_BUCKET;
   }
 
   async onModuleInit() {
     const { data: buckets } = await this.client.storage.listBuckets();
-    const exists = buckets?.some((bucket) => bucket.name === RESUME_BUCKET);
+    const exists = buckets?.some((bucket) => bucket.name === this.resumeBucket);
     if (!exists) {
       const { error } = await this.client.storage.createBucket(
-        RESUME_BUCKET,
+        this.resumeBucket,
         { public: false },
       );
       if (error) {
-        this.logger.error(`Failed to create "${RESUME_BUCKET}" bucket`, error);
+        this.logger.error(
+          `Failed to create "${this.resumeBucket}" bucket`,
+          error,
+        );
       }
     }
   }
@@ -48,7 +50,7 @@ export class SupabaseService implements OnModuleInit {
     contentType: string,
   ): Promise<void> {
     const { error } = await this.client.storage
-      .from(RESUME_BUCKET)
+      .from(this.resumeBucket)
       .upload(path, buffer, { contentType, upsert: true });
     if (error) {
       throw new Error(`Supabase Storage upload failed: ${error.message}`);
@@ -61,7 +63,7 @@ export class SupabaseService implements OnModuleInit {
     // needs to stay valid for the length of one parse request, not
     // forever.
     const { data, error } = await this.client.storage
-      .from(RESUME_BUCKET)
+      .from(this.resumeBucket)
       .createSignedUrl(path, expiresInSeconds);
     if (error || !data) {
       throw new Error(
