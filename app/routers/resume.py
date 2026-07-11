@@ -3,7 +3,7 @@ from urllib.parse import unquote, urlparse
 from fastapi import APIRouter
 
 from app.schemas.resume import ParseResumeRequest, ParseResumeResponse
-from app.services.gemini_extraction import extract_resume_data
+from app.services.resume_extraction import extract_resume_data
 from app.services.text_extraction import download_file, extract_text
 
 router = APIRouter(tags=["resume"])

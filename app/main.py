@@ -1,6 +1,12 @@
 from fastapi import FastAPI
 
-from app.routers import cover_letter, fit, job_description, resume
+from app.routers import (
+    cover_letter,
+    fit,
+    interview_prep,
+    job_description,
+    resume,
+)
 
 app = FastAPI(title="Job Assistant AI Service")
 
@@ -12,6 +18,7 @@ app.include_router(resume.router)
 app.include_router(job_description.router)
 app.include_router(fit.router)
 app.include_router(cover_letter.router)
+app.include_router(interview_prep.router)
 
 
 @app.get("/health")
