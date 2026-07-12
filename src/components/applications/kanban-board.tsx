@@ -84,12 +84,9 @@ export function KanbanBoard() {
     );
   }
 
-  // One responsive container handles both breakpoints: on mobile there
-  // are more columns than fit on screen, so overflow-x-auto makes it
-  // scroll (snap-x/snap-mandatory + each column's snap-start makes that
-  // scroll settle on column boundaries, like a carousel). On desktop,
-  // four columns usually just fit — same markup, no separate "mobile"
-  // vs "desktop" layout to keep in sync.
+  // A responsive grid instead of a horizontally scrolling row: columns
+  // stack on mobile and sit two per row from sm: up — wide lanes with
+  // big readable cards, and the page only ever scrolls vertically.
   return (
     <DndContext
       sensors={sensors}
@@ -102,7 +99,7 @@ export function KanbanBoard() {
           {error}
         </p>
       )}
-      <div className="flex flex-1 gap-4 overflow-x-auto p-4 sm:p-6 lg:p-8 snap-x snap-mandatory">
+      <div className="grid flex-1 grid-cols-1 items-start gap-4 p-4 sm:grid-cols-2 sm:p-6 lg:p-8">
         {COLUMNS.map(({ status, title }) => (
           <KanbanColumn
             key={status}

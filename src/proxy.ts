@@ -1,7 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/resume", "/applications"];
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/resume",
+  "/applications",
+  "/workspace",
+];
 
 // DEV-ONLY AUTH BYPASS — see src/lib/auth/auth-context.tsx for the full
 // explanation. When on, this skips the redirect-to-login check entirely

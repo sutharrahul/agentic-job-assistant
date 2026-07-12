@@ -3,11 +3,18 @@
 import Link from "next/link";
 import { useDraggable } from "@dnd-kit/core";
 import { Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Application } from "@/lib/types/application";
 import { isStale } from "@/lib/api/applications";
 import { cn } from "@/lib/utils";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
+}
 
 // Pure presentation — used both inside the draggable wrapper below and as
 // the DragOverlay preview in kanban-board.tsx (the overlay must not carry
@@ -20,12 +27,24 @@ export function ApplicationCardView({
   className?: string;
 }) {
   return (
-    <Card size="sm" className={cn("transition-colors hover:bg-secondary/50", className)}>
-      <CardHeader className="pb-0">
-        <CardTitle className="text-sm font-medium">{app.company}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="text-sm text-muted-foreground">{app.jobTitle}</p>
+    <Card
+      className={cn(
+        "transition-all hover:-translate-y-0.5 hover:shadow-md",
+        className,
+      )}
+    >
+      <CardContent className="space-y-3">
+        <div className="flex items-start gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-heading text-base font-semibold text-primary dark:bg-primary/15">
+            {app.company[0]?.toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-base font-medium">{app.company}</p>
+            <p className="truncate text-sm text-muted-foreground">
+              {app.jobTitle}
+            </p>
+          </div>
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {app.fitScore !== null && (
             <Badge variant="secondary">{Math.round(app.fitScore)}% fit</Badge>
@@ -36,6 +55,9 @@ export function ApplicationCardView({
               Follow up
             </Badge>
           )}
+          <span className="ml-auto text-xs text-muted-foreground">
+            {formatDate(app.createdAt)}
+          </span>
         </div>
       </CardContent>
     </Card>

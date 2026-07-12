@@ -1,22 +1,37 @@
 "use client";
 
-import { ArrowRight, Play, Sparkles, Gauge, FileCheck2, PenLine, MessageSquareHeart } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowRight, Layers, Play, Sparkles, Gauge, FileCheck2, PenLine, MessageSquareHeart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthModal } from "@/lib/auth/auth-modal-context";
+import { useAuth } from "@/lib/auth/auth-context";
 
 export function Hero() {
   const { openModal } = useAuthModal();
+  const { isBypassed } = useAuth();
+  const router = useRouter();
 
   function scrollToDemo() {
     document.getElementById("dashboard-preview")?.scrollIntoView({ behavior: "smooth" });
+  }
+
+  // Same reasoning as navbar.tsx: bypass mode has no real Supabase
+  // project to sign up against, so skip straight to the app.
+  function handleGetStarted() {
+    if (isBypassed) {
+      router.push("/dashboard");
+      return;
+    }
+    openModal("signup");
   }
 
   return (
     <section className="relative overflow-hidden px-4 pt-16 pb-24 sm:px-6 sm:pt-24 sm:pb-32">
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,color-mix(in_oklch,var(--foreground)_6%,transparent),transparent)]"
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,color-mix(in_oklch,var(--primary)_10%,transparent),transparent)]"
       />
 
       <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center">
@@ -38,9 +53,19 @@ export function Hero() {
         </p>
 
         <div className="animate-in fade-in slide-in-from-bottom-3 flex w-full flex-col gap-3 duration-700 sm:w-auto sm:flex-row">
-          <Button size="lg" className="gap-1.5" onClick={() => openModal("signup")}>
+          <Button size="lg" className="gap-1.5" onClick={handleGetStarted}>
             Get Started
             <ArrowRight data-icon="inline-end" />
+          </Button>
+          <Button
+            size="lg"
+            variant="secondary"
+            className="gap-1.5"
+            nativeButton={false}
+            render={<Link href="/workspace" />}
+          >
+            <Layers data-icon="inline-start" />
+            Open Workspace
           </Button>
           <Button size="lg" variant="outline" className="gap-1.5" onClick={scrollToDemo}>
             <Play data-icon="inline-start" className="fill-current" />
@@ -56,29 +81,25 @@ export function Hero() {
           icon={Gauge}
           label="Resume Score"
           value="92 / 100"
-          className="-top-6 -left-4 hidden sm:flex sm:-left-10"
-          delay="0s"
+          className="-top-8 -left-6 hidden sm:flex sm:-left-14"
         />
         <FloatingCard
           icon={FileCheck2}
           label="AI Fit Analysis"
           value="87% match"
-          className="top-16 -right-4 hidden sm:flex sm:-right-12"
-          delay="1.2s"
+          className="-top-8 -right-6 hidden sm:flex sm:-right-14"
         />
         <FloatingCard
           icon={PenLine}
           label="Cover Letter"
           value="Ready to review"
-          className="-bottom-6 -left-4 hidden sm:flex sm:-left-12"
-          delay="0.6s"
+          className="-bottom-8 -left-6 hidden sm:flex sm:-left-14"
         />
         <FloatingCard
           icon={MessageSquareHeart}
           label="Interview Ready"
           value="5 talking points"
-          className="bottom-10 -right-4 hidden sm:flex sm:-right-10"
-          delay="1.8s"
+          className="-bottom-8 -right-6 hidden sm:flex sm:-right-14"
         />
       </div>
     </section>
@@ -90,20 +111,17 @@ function FloatingCard({
   label,
   value,
   className,
-  delay,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   label: string;
   value: string;
   className: string;
-  delay: string;
 }) {
   return (
     <div
-      className={`animate-float absolute z-10 items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-2.5 text-left shadow-lg ring-1 ring-foreground/5 ${className}`}
-      style={{ animationDelay: delay }}
+      className={`absolute z-10 items-center gap-2.5 rounded-xl border border-border bg-card px-3.5 py-2.5 text-left shadow-xl ring-1 ring-foreground/5 ${className}`}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-primary/15">
         <Icon className="size-4" />
       </span>
       <span className="flex flex-col">
@@ -127,7 +145,7 @@ function DashboardMockup() {
           <span className="text-xs text-muted-foreground">Resume Score</span>
           <span className="font-heading text-4xl font-semibold">92</span>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div className="h-full w-[92%] rounded-full bg-foreground" />
+            <div className="h-full w-[92%] rounded-full bg-primary" />
           </div>
         </div>
         <div className="flex flex-col gap-2 rounded-lg bg-card p-4 ring-1 ring-foreground/5 sm:col-span-2">
@@ -136,7 +154,7 @@ function DashboardMockup() {
             {[40, 70, 55, 90, 65, 80].map((h, i) => (
               <div
                 key={i}
-                className="flex-1 rounded-t bg-foreground/80"
+                className="flex-1 rounded-t bg-primary/70"
                 style={{ height: `${h}%` }}
               />
             ))}

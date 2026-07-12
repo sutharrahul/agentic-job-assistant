@@ -1,10 +1,16 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
-import { Badge } from "@/components/ui/badge";
 import { DraggableApplicationCard } from "@/components/applications/application-card";
 import { Application, ApplicationStatus } from "@/lib/types/application";
 import { cn } from "@/lib/utils";
+
+const STATUS_DOT_COLORS: Record<ApplicationStatus, string> = {
+  APPLIED: "bg-sky-500",
+  INTERVIEW: "bg-amber-500",
+  OFFER: "bg-emerald-500",
+  REJECTED: "bg-rose-400",
+};
 
 export function KanbanColumn({
   status,
@@ -18,24 +24,27 @@ export function KanbanColumn({
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    // w-[85vw] on mobile: wide enough to read comfortably, narrow enough
-    // that the next column peeks in at the edge (a visual hint that more
-    // content is scrollable). sm:w-72 once there's room to show more
-    // than one column at a time without relying on that hint.
-    <div className="flex w-[85vw] shrink-0 snap-start flex-col gap-3 sm:w-72">
+    // min-w-0 lets the column shrink inside its grid track — a long
+    // company name must truncate in the card, not widen the page.
+    <div className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center gap-2 px-1">
+        <span
+          className={cn("size-2 rounded-full", STATUS_DOT_COLORS[status])}
+        />
         <h2 className="text-sm font-semibold">{title}</h2>
-        <Badge variant="outline">{apps.length}</Badge>
+        <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+          {apps.length}
+        </span>
       </div>
       <div
         ref={setNodeRef}
         className={cn(
-          "flex min-h-24 flex-1 flex-col gap-2 rounded-lg p-1 transition-colors",
-          isOver && "bg-secondary/60 ring-2 ring-ring/40",
+          "flex min-h-28 flex-col gap-2 rounded-xl bg-muted/40 p-2 transition-colors",
+          isOver && "bg-primary/5 ring-2 ring-primary/40",
         )}
       >
         {apps.length === 0 && (
-          <p className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+          <p className="rounded-lg border border-dashed py-6 text-center text-xs text-muted-foreground">
             No applications yet
           </p>
         )}

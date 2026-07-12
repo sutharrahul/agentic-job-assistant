@@ -38,8 +38,7 @@ export default function RootLayout({
     // that isn't actually a bug.
     <html
       lang="en"
-      className={`${poppins.variable} ${geistMono.variable} h-full scroll-smooth antialiased`}
-      data-scroll-behavior="smooth"
+      className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col">

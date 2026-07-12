@@ -8,7 +8,6 @@ import { WorkflowSection } from "@/components/landing/workflow";
 import { DashboardPreview } from "@/components/landing/dashboard-preview";
 import { WhyChoose } from "@/components/landing/why-choose";
 import { Testimonials } from "@/components/landing/testimonials";
-import { Pricing } from "@/components/landing/pricing";
 import { FAQ } from "@/components/landing/faq";
 import { Footer } from "@/components/landing/footer";
 
@@ -25,7 +24,6 @@ export default function Home() {
           <DashboardPreview />
           <WhyChoose />
           <Testimonials />
-          <Pricing />
           <FAQ />
         </main>
         <Footer />

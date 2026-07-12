@@ -33,6 +33,13 @@ const STATUS_VARIANTS: Record<
   REJECTED: "destructive",
 };
 
+const STATUS_DOT_COLORS: Record<ApplicationStatus, string> = {
+  APPLIED: "bg-sky-500",
+  INTERVIEW: "bg-amber-500",
+  OFFER: "bg-emerald-500",
+  REJECTED: "bg-rose-400",
+};
+
 export default function DashboardPage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,6 +59,13 @@ export default function DashboardPage() {
           scored.length,
       )
     : null;
+
+  const statusCounts = (
+    Object.keys(STATUS_LABELS) as ApplicationStatus[]
+  ).map((status) => ({
+    status,
+    count: apps.filter((a) => a.status === status).length,
+  }));
 
   const stats = [
     { label: "Applications", value: String(apps.length), icon: Briefcase },
@@ -78,13 +92,15 @@ export default function DashboardPage() {
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     )
-    .slice(0, 4);
+    .slice(0, 5);
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            Dashboard
+          </h1>
           <p className="text-muted-foreground">
             Welcome back — here&apos;s where your job search stands.
           </p>
@@ -103,24 +119,82 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(({ label, value, icon: Icon }) => (
-          <Card key={label}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {label}
-              </CardTitle>
-              <Icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {isLoading ? "…" : value}
+          <Card key={label} className="transition-shadow hover:shadow-md">
+            <CardContent className="flex items-center gap-4">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-primary/15">
+                <Icon className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-muted-foreground">
+                  {label}
+                </p>
+                <p className="text-2xl font-semibold tracking-tight">
+                  {isLoading ? "…" : value}
+                </p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <Card>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle>Pipeline</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!isLoading && apps.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Your pipeline is empty — add an application to see the
+                breakdown by stage.
+              </p>
+            )}
+            {apps.length > 0 && (
+              <>
+                {/* One segmented bar for the whole pipeline, then a row
+                    per stage — same data as the kanban board, at a glance. */}
+                <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
+                  {statusCounts.map(
+                    ({ status, count }) =>
+                      count > 0 && (
+                        <div
+                          key={status}
+                          className={STATUS_DOT_COLORS[status]}
+                          style={{ width: `${(count / apps.length) * 100}%` }}
+                        />
+                      ),
+                  )}
+                </div>
+                <ul className="space-y-3">
+                  {statusCounts.map(({ status, count }) => (
+                    <li
+                      key={status}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={`size-2 rounded-full ${STATUS_DOT_COLORS[status]}`}
+                        />
+                        {STATUS_LABELS[status]}
+                      </span>
+                      <span className="flex items-baseline gap-2">
+                        <span className="font-semibold">{count}</span>
+                        <span className="w-10 text-right text-xs text-muted-foreground">
+                          {apps.length
+                            ? Math.round((count / apps.length) * 100)
+                            : 0}
+                          %
+                        </span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Recent applications</CardTitle>
           </CardHeader>
@@ -135,7 +209,7 @@ export default function DashboardPage() {
                 <li key={app.id}>
                   <Link
                     href={`/applications/${app.id}`}
-                    className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 hover:opacity-80"
+                    className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
@@ -162,7 +236,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Needs follow-up</CardTitle>
           </CardHeader>
@@ -177,7 +251,7 @@ export default function DashboardPage() {
                 <li key={app.id}>
                   <Link
                     href={`/applications/${app.id}`}
-                    className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0 hover:opacity-80"
+                    className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">

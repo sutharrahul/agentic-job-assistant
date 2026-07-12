@@ -106,27 +106,38 @@ export function ApplicationDetail({ id }: { id: string }) {
   }
 
   return (
-    <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
       <Link
         href="/applications"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to board
       </Link>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold">{app.company}</h1>
-            {isStale(app) && (
-              <Badge variant="destructive">
-                <Clock data-icon="inline-start" />
-                Follow up
-              </Badge>
-            )}
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-heading text-lg font-semibold text-primary dark:bg-primary/15">
+              {app.company[0]?.toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-heading text-2xl font-semibold tracking-tight break-words">
+                  {app.company}
+                </h1>
+                {isStale(app) && (
+                  <Badge variant="destructive">
+                    <Clock data-icon="inline-start" />
+                    Follow up
+                  </Badge>
+                )}
+              </div>
+              <p className="break-words text-muted-foreground">
+                {app.jobTitle}
+              </p>
+            </div>
           </div>
-          <p className="text-muted-foreground">{app.jobTitle}</p>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             {app.location && (
               <span className="inline-flex items-center gap-1">
@@ -147,34 +158,44 @@ export function ApplicationDetail({ id }: { id: string }) {
           </div>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" />}>
-            {STATUS_LABELS[app.status]}
-            <ChevronDown data-icon="inline-end" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {(Object.keys(STATUS_LABELS) as ApplicationStatus[]).map(
-              (status) => (
-                <DropdownMenuItem
-                  key={status}
-                  onClick={() => handleStatusChange(status)}
-                >
-                  {STATUS_LABELS[status]}
-                </DropdownMenuItem>
-              ),
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex shrink-0 items-center gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" />}>
+              {STATUS_LABELS[app.status]}
+              <ChevronDown data-icon="inline-end" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(Object.keys(STATUS_LABELS) as ApplicationStatus[]).map(
+                (status) => (
+                  <DropdownMenuItem
+                    key={status}
+                    onClick={() => handleStatusChange(status)}
+                  >
+                    {STATUS_LABELS[status]}
+                  </DropdownMenuItem>
+                ),
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button variant="destructive" size="icon" onClick={handleDelete}>
+            <Trash2 />
+            <span className="sr-only">Delete application</span>
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="space-y-4 lg:col-span-2">
+        {/* min-w-0 on every grid child: grid items refuse to shrink below
+            their content width by default, so one long unbroken line (a
+            URL in a job description, say) would otherwise push the whole
+            page into horizontal overflow. */}
+        <div className="min-w-0 space-y-4 lg:col-span-2">
           <Card>
             <CardHeader>
               <CardTitle>Job description</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="max-h-80 overflow-y-auto text-sm whitespace-pre-wrap text-muted-foreground">
+              <p className="max-h-80 overflow-y-auto text-sm break-words whitespace-pre-wrap text-muted-foreground">
                 {app.jobDescription}
               </p>
             </CardContent>
@@ -183,7 +204,7 @@ export function ApplicationDetail({ id }: { id: string }) {
           <CoverLetterCard app={app} onUpdated={setApp} />
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <FitAnalysisCard app={app} onUpdated={setApp} />
 
           <Card>
@@ -207,16 +228,11 @@ export function ApplicationDetail({ id }: { id: string }) {
               </div>
             </CardContent>
           </Card>
-
-          <Button variant="destructive" onClick={handleDelete}>
-            <Trash2 data-icon="inline-start" />
-            Delete application
-          </Button>
         </div>
 
         {/* Full-width: prep packs are long-form reading, so they get the
             whole row under the grid instead of squeezing into a column. */}
-        <div className="lg:col-span-3">
+        <div className="min-w-0 lg:col-span-3">
           <InterviewPrepCard app={app} onUpdated={setApp} />
         </div>
       </div>

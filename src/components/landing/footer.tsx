@@ -5,7 +5,6 @@ import { GitHubIcon, LinkedInIcon } from "@/components/landing/brand-icons";
 const FOOTER_LINKS = {
   Product: [
     { label: "Features", href: "#features" },
-    { label: "Pricing", href: "#pricing" },
     { label: "Roadmap", href: "#" },
   ],
   Resources: [
