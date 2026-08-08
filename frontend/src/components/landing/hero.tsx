@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Layers, Play, Sparkles, Gauge, FileCheck2, PenLine, MessageSquareHeart } from "lucide-react";
+import { ArrowRight, Play, Sparkles, Gauge, FileCheck2, PenLine, MessageSquareHeart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuthModal } from "@/lib/auth/auth-modal-context";
@@ -56,16 +55,6 @@ export function Hero() {
           <Button size="lg" className="gap-1.5" onClick={handleGetStarted}>
             Get Started
             <ArrowRight data-icon="inline-end" />
-          </Button>
-          <Button
-            size="lg"
-            variant="secondary"
-            className="gap-1.5"
-            nativeButton={false}
-            render={<Link href="/workspace" />}
-          >
-            <Layers data-icon="inline-start" />
-            Open Workspace
           </Button>
           <Button size="lg" variant="outline" className="gap-1.5" onClick={scrollToDemo}>
             <Play data-icon="inline-start" className="fill-current" />

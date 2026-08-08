@@ -4,9 +4,9 @@ from pydantic import BaseModel, Field
 class AnalyzeFitRequest(BaseModel):
     parsed_resume: dict
     # Built by NestJS straight from the Application row:
-    # { company, job_title, description }. NOT the output of /parse-jd —
-    # sending the raw JD text here avoids a second AI round trip before
-    # every fit call.
+    # { company, job_title, description }. Deliberately NOT pre-parsed by
+    # a separate LLM step — sending the raw JD text here avoids a second
+    # AI round trip before every fit call.
     parsed_job: dict
 
 

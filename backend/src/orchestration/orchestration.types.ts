@@ -36,10 +36,10 @@ export interface ParseResumeResponse {
   parsed: ParsedResumeData;
 }
 
-// The `parsed_job` every AI endpoint receives — NOT the output of
-// /parse-jd. NestJS builds it straight from the Application row
-// (company, jobTitle, jobDescription) so no extra AI round trip is
-// needed before fit/cover-letter/prep calls.
+// The `parsed_job` every AI endpoint receives. Deliberately NOT
+// pre-parsed by a separate LLM step: NestJS builds it straight from the
+// Application row (company, jobTitle, jobDescription) so no extra AI
+// round trip is needed before fit/cover-letter/prep calls.
 export interface JobPayload {
   company: string;
   job_title: string;

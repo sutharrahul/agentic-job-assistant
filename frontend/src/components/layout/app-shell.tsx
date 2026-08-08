@@ -6,8 +6,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen flex-col">
       <DevAuthBanner />
       <Navbar />
-      {/* No sidebar: navigation lives in the Navbar's pill switcher
-          (same pattern as /workspace), so content gets the full width. */}
+      {/* No sidebar: navigation lives in the Navbar's pill switcher, so
+          content gets the full width. */}
       <main className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         {children}
       </main>

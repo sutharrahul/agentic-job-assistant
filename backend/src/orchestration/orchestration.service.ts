@@ -96,10 +96,6 @@ export class OrchestrationService {
     return this.post<ParseResumeResponse>('/parse-resume', payload);
   }
 
-  parseJobDescription(payload: unknown) {
-    return this.post('/parse-jd', payload);
-  }
-
   analyzeFit(payload: { parsed_resume: unknown; parsed_job: JobPayload }) {
     // TODO: check Redis for a cached result (keyed on resume + job
     // description) before making this call, and write the response back

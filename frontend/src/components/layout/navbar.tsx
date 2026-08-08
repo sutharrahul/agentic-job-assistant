@@ -49,8 +49,7 @@ export function Navbar() {
         <span className="hidden lg:inline">Agentic Job Assistant</span>
       </Link>
 
-      {/* Same pill switcher as the /workspace header — one nav design
-          language across the whole app. */}
+      {/* Pill switcher — one nav design language across the whole app. */}
       <nav className="flex items-center gap-1 rounded-full border bg-background/60 p-1">
         {NAV_ITEMS.map(({ href, label }) => (
           <Link

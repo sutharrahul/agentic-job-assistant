@@ -4,7 +4,7 @@ from pydantic import BaseModel
 class InterviewPrepRequest(BaseModel):
     parsed_resume: dict
     # { company, job_title, description } — same shape every AI endpoint
-    # gets from NestJS (see fit.py for why it's not /parse-jd output).
+    # gets from NestJS (see fit.py for why it isn't pre-parsed).
     parsed_job: dict
     # Optional: the stored fit analysis. When present, its missing_skills
     # feed straight into "gaps to prepare" instead of being re-derived.
