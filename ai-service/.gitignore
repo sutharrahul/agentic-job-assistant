@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+
+# AI assistant instructions — local to each dev's setup, not project source
+CLAUDE.md
+AGENTS.md
