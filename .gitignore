@@ -51,3 +51,10 @@ AGENTS.md
 # Per-developer tool settings. .claude/launch.json IS tracked — it
 # documents how to start the three services.
 .claude/settings.local.json
+
+# Personal interview prep notes — private, never publish.
+# The real copy lives OUTSIDE this repo; this is a safety net in case a
+# copy is ever dropped in here. Matches the exact filename only, so it
+# cannot catch src/components/applications/interview-prep-card.tsx.
+interview-prep.md
+/interview-prep*.md
