@@ -12,6 +12,11 @@ const ACCEPTED_TYPES = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
+// Mirrors the backend's MaxFileSizeValidator (resumes.controller.ts).
+// Checked here too so an oversized file is rejected instantly instead of
+// being uploaded in full and then bounced with a 413.
+const MAX_FILE_BYTES = 5 * 1024 * 1024;
+
 export function ResumeUploadForm({
   onUploaded,
 }: {
@@ -25,6 +30,11 @@ export function ResumeUploadForm({
     const selected = event.target.files?.[0] ?? null;
     if (selected && !ACCEPTED_TYPES.includes(selected.type)) {
       setError("Only PDF and DOCX files are supported");
+      setFile(null);
+      return;
+    }
+    if (selected && selected.size > MAX_FILE_BYTES) {
+      setError("That file is larger than 5MB");
       setFile(null);
       return;
     }

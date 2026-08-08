@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AxiosError } from "axios";
 import { api } from "@/lib/axios";
 import {
   EducationEntry,
@@ -64,8 +65,15 @@ export function ResumePreviewForm({
         data,
       );
       onConfirmed(updated);
-    } catch {
-      setError("Failed to save — please try again");
+    } catch (err) {
+      // Surface the backend's own message (same as the upload form):
+      // a swallowed error here hid ValidationPipe's field-level
+      // complaints behind a generic "try again" that never worked.
+      const message =
+        err instanceof AxiosError
+          ? (err.response?.data?.message ?? "Failed to save — please try again")
+          : "Failed to save — please try again";
+      setError(Array.isArray(message) ? message.join(", ") : message);
     } finally {
       setIsSaving(false);
     }
