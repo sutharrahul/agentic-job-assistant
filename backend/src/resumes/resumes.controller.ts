@@ -14,9 +14,9 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { SupabaseAuthGuard } from '../auth/guards/supabase-auth.guard';
+import { ClerkAuthGuard } from '../auth/guards/clerk-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import type { SupabaseJwtPayload } from '../auth/guards/supabase-auth.guard';
+import type { ClerkJwtPayload } from '../auth/guards/clerk-auth.guard';
 import { ResumesService } from './resumes.service';
 import { ConfirmResumeDto } from './dto/confirm-resume.dto';
 
@@ -29,17 +29,17 @@ const ALLOWED_MIME_PATTERN =
   /^application\/(pdf|vnd\.openxmlformats-officedocument\.wordprocessingml\.document)$/;
 
 @Controller('resumes')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(ClerkAuthGuard)
 export class ResumesController {
   constructor(private readonly resumesService: ResumesService) {}
 
   @Get()
-  findAll(@CurrentUser() user: SupabaseJwtPayload) {
+  findAll(@CurrentUser() user: ClerkJwtPayload) {
     return this.resumesService.findAllForUser(user.sub);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: SupabaseJwtPayload) {
+  findOne(@Param('id') id: string, @CurrentUser() user: ClerkJwtPayload) {
     return this.resumesService.findOne(id, user.sub);
   }
 
@@ -55,7 +55,7 @@ export class ResumesController {
       }),
     )
     file: Express.Multer.File,
-    @CurrentUser() user: SupabaseJwtPayload,
+    @CurrentUser() user: ClerkJwtPayload,
   ) {
     return this.resumesService.upload(user.sub, file);
   }
@@ -64,7 +64,7 @@ export class ResumesController {
   confirm(
     @Param('id') id: string,
     @Body() dto: ConfirmResumeDto,
-    @CurrentUser() user: SupabaseJwtPayload,
+    @CurrentUser() user: ClerkJwtPayload,
   ) {
     return this.resumesService.confirm(id, user.sub, dto);
   }

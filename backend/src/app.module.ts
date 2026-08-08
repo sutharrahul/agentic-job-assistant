@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { ResumesModule } from './resumes/resumes.module';
 import { ApplicationsModule } from './applications/applications.module';
 import { OrchestrationModule } from './orchestration/orchestration.module';
+import { WebhooksModule } from './webhooks/webhooks.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { OrchestrationModule } from './orchestration/orchestration.module';
     ResumesModule,
     ApplicationsModule,
     OrchestrationModule,
+    WebhooksModule,
   ],
   controllers: [HealthController],
 })

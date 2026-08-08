@@ -4,18 +4,18 @@
 // for the logged-in user as a parameter:
 //
 //   @Get('me')
-//   getMe(@CurrentUser() user: SupabaseJwtPayload) { ... }
+//   getMe(@CurrentUser() user: ClerkJwtPayload) { ... }
 //
 // instead of every handler having to do
 // `const user = request.user` by hand. It only works on routes protected
-// by SupabaseAuthGuard, since that's what puts `user` on the request in
-// the first place — see supabase-auth.guard.ts.
+// by ClerkAuthGuard, since that's what puts `user` on the request in
+// the first place — see clerk-auth.guard.ts.
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { Request } from 'express';
-import { SupabaseJwtPayload } from '../guards/supabase-auth.guard';
+import { ClerkJwtPayload } from '../guards/clerk-auth.guard';
 
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): SupabaseJwtPayload | undefined => {
+  (_data: unknown, ctx: ExecutionContext): ClerkJwtPayload | undefined => {
     const request = ctx.switchToHttp().getRequest<Request>();
     return request.user;
   },

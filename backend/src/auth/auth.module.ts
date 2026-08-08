@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
-import { SupabaseAuthGuard } from './guards/supabase-auth.guard';
+import { ClerkAuthGuard } from './guards/clerk-auth.guard';
 
 @Module({
-  providers: [SupabaseAuthGuard],
-  exports: [SupabaseAuthGuard],
+  providers: [ClerkAuthGuard],
+  exports: [ClerkAuthGuard],
 })
 export class AuthModule {}

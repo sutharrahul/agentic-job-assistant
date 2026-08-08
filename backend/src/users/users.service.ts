@@ -9,14 +9,15 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  // Supabase Auth creates a user (and issues a JWT) the moment someone
-  // signs up — but that identity only exists in Supabase's own
-  // auth.users table, not in OUR `User` table. Nothing else in this
-  // backend creates that row automatically (no DB trigger/webhook is set
-  // up), so the frontend calls this once right after a successful
-  // login/signup. It's an upsert, not a plain create, because it's safe
-  // (and cheap) to call on every login — first login creates the row,
-  // every login after that is a no-op update.
+  // Clerk creates a user (and issues a JWT) the moment someone signs up,
+  // but that identity lives in Clerk, not in OUR `User` table — and
+  // every Resume/Application row has a foreign key to it.
+  //
+  // Two things call this, deliberately: the Clerk user.created webhook
+  // (the authoritative path) and POST /users/sync (the fallback, for the
+  // window before the webhook arrives). That's why it's an upsert rather
+  // than a create — whichever gets there first wins, and the second is a
+  // harmless no-op instead of a duplicate-key crash.
   upsertFromAuth(id: string, email: string) {
     return this.prisma.user.upsert({
       where: { id },
