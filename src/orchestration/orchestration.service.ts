@@ -1,6 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadGatewayException,
+  GatewayTimeoutException,
+  HttpException,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
+import { AxiosError } from 'axios';
 import { firstValueFrom } from 'rxjs';
 import {
   AnalyzeFitResponse,
@@ -17,6 +24,8 @@ import {
 // retries, or error-handling for AI calls only need to be written once.
 @Injectable()
 export class OrchestrationService {
+  private readonly logger = new Logger(OrchestrationService.name);
+
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
@@ -31,11 +40,56 @@ export class OrchestrationService {
   // async/await, not RxJS streams, so firstValueFrom() takes the one
   // value an HTTP response Observable ever emits and turns it into a
   // Promise — that's the only reason RxJS shows up here at all.
+  //
+  // Everything is funneled through here (see the class comment) so this
+  // one try/catch is the only error translation the AI calls need. The
+  // request timeout itself is configured once in orchestration.module.ts.
   private async post<T>(path: string, payload: unknown): Promise<T> {
-    const { data } = await firstValueFrom(
-      this.httpService.post<T>(`${this.baseUrl}${path}`, payload),
+    try {
+      const { data } = await firstValueFrom(
+        this.httpService.post<T>(`${this.baseUrl}${path}`, payload),
+      );
+      return data;
+    } catch (error) {
+      throw this.toHttpException(path, error);
+    }
+  }
+
+  // Without this, every AI failure reached the user as a bare 500
+  // "Internal server error" — including FastAPI's genuinely useful 4xx
+  // messages ("No extractable text found in resume — is it a scanned
+  // image?"), which were being thrown away at this boundary.
+  private toHttpException(path: string, error: unknown): Error {
+    if (!(error instanceof AxiosError)) {
+      return error instanceof Error ? error : new Error(String(error));
+    }
+
+    // The AI service answered, and it was a client error — that response
+    // describes something the USER can act on, so pass it through with
+    // its own status and message rather than flattening it to a 500.
+    const status = error.response?.status;
+    if (status && status >= 400 && status < 500) {
+      const detail = (error.response?.data as { detail?: unknown } | undefined)
+        ?.detail;
+      const message =
+        typeof detail === 'string' ? detail : 'AI service rejected the request';
+      this.logger.warn(`${path} -> ${status}: ${message}`);
+      return new HttpException(message, status);
+    }
+
+    // Everything else is OUR problem, not the user's: the AI service is
+    // down, unreachable, or took longer than the configured timeout.
+    // Log the real cause (the user only gets the generic message).
+    this.logger.error(`${path} failed: ${error.code ?? ''} ${error.message}`);
+
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return new GatewayTimeoutException(
+        'The AI service took too long to respond. Please try again.',
+      );
+    }
+    return new BadGatewayException(
+      'The AI service is unavailable right now. Please try again shortly.',
     );
-    return data;
   }
 
   parseResume(payload: { resume_url: string }) {

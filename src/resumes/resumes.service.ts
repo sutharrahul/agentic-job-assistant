@@ -8,11 +8,6 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { OrchestrationService } from '../orchestration/orchestration.service';
 import { ConfirmResumeDto } from './dto/confirm-resume.dto';
 
-const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
-];
-
 @Injectable()
 export class ResumesService {
   constructor(
@@ -39,9 +34,9 @@ export class ResumesService {
   }
 
   async upload(userId: string, file: Express.Multer.File) {
-    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
-      throw new Error('Only PDF and DOCX resumes are supported');
-    }
+    // File type/size are validated by the controller's ParseFilePipe
+    // before this runs — by magic number, not the client-supplied
+    // mimetype — so a bad file never reaches Storage at all.
 
     // userId-prefixed path doubles as a per-user folder in the bucket —
     // makes it trivial to reason about "which files belong to this

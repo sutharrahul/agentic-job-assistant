@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  FileTypeValidator,
   Get,
   MaxFileSizeValidator,
   Param,
@@ -20,6 +21,12 @@ import { ResumesService } from './resumes.service';
 import { ConfirmResumeDto } from './dto/confirm-resume.dto';
 
 const MAX_RESUME_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+
+// Same two types ResumesService used to check by hand — enforced here
+// instead, so a wrong file type is rejected by the pipe (clean 400,
+// standard message) BEFORE anything is written to Supabase Storage.
+const ALLOWED_MIME_PATTERN =
+  /^application\/(pdf|vnd\.openxmlformats-officedocument\.wordprocessingml\.document)$/;
 
 @Controller('resumes')
 @UseGuards(SupabaseAuthGuard)
@@ -41,7 +48,10 @@ export class ResumesController {
   upload(
     @UploadedFile(
       new ParseFilePipe({
-        validators: [new MaxFileSizeValidator({ maxSize: MAX_RESUME_SIZE_BYTES })],
+        validators: [
+          new MaxFileSizeValidator({ maxSize: MAX_RESUME_SIZE_BYTES }),
+          new FileTypeValidator({ fileType: ALLOWED_MIME_PATTERN }),
+        ],
       }),
     )
     file: Express.Multer.File,

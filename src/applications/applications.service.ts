@@ -86,7 +86,7 @@ export class ApplicationsService {
 
   async analyzeFit(id: string, userId: string) {
     const application = await this.findOne(id, userId);
-    const resume = await this.getConfirmedResume(userId);
+    const resume = await this.getResumeForApplication(userId, application);
 
     const result = await this.orchestrationService.analyzeFit({
       parsed_resume: resume.parsedData,
@@ -112,7 +112,7 @@ export class ApplicationsService {
 
   async generateCoverLetter(id: string, userId: string, tone: CoverLetterTone) {
     const application = await this.findOne(id, userId);
-    const resume = await this.getConfirmedResume(userId);
+    const resume = await this.getResumeForApplication(userId, application);
 
     const result = await this.orchestrationService.generateCoverLetter({
       parsed_resume: resume.parsedData,
@@ -124,6 +124,7 @@ export class ApplicationsService {
     return this.prisma.application.update({
       where: { id },
       data: {
+        resumeId: resume.id,
         coverLetter: result.cover_letter,
         coverLetterTone: tone,
         // Freshly generated text is never auto-approved — the approval
@@ -135,7 +136,7 @@ export class ApplicationsService {
 
   async generateInterviewPrep(id: string, userId: string) {
     const application = await this.findOne(id, userId);
-    const resume = await this.getConfirmedResume(userId);
+    const resume = await this.getResumeForApplication(userId, application);
 
     const result = await this.orchestrationService.generateInterviewPrep({
       parsed_resume: resume.parsedData,
@@ -146,6 +147,7 @@ export class ApplicationsService {
     return this.prisma.application.update({
       where: { id },
       data: {
+        resumeId: resume.id,
         interviewPrep: {
           focusAreas: result.focus_areas,
           technicalQuestions: result.technical_questions.map((q) => ({
@@ -162,10 +164,33 @@ export class ApplicationsService {
     });
   }
 
-  // Every AI action grades against the user's CONFIRMED resume (their
-  // reviewed-and-saved base profile), never a merely-parsed one — parsed
-  // data the user hasn't looked at yet could contain extraction errors
-  // they'd have corrected.
+  // Every AI action grades against a CONFIRMED resume (reviewed-and-saved
+  // by the user, never a merely-parsed one — parsed data they haven't
+  // looked at yet could contain extraction errors they'd have corrected).
+  //
+  // If this application already has a resumeId (a previous AI action ran
+  // against it), we keep using THAT resume, even if the user has since
+  // confirmed a newer one — otherwise re-running fit analysis on an old
+  // application would silently start grading against a resume the
+  // application's own skillGapAnalysis/coverLetter/interviewPrep were
+  // never generated from, with nothing on the row to explain the jump.
+  // Only a fresh application (no resumeId yet) picks up the latest
+  // confirmed resume.
+  private async getResumeForApplication(
+    userId: string,
+    application: { resumeId: string | null },
+  ) {
+    if (application.resumeId) {
+      const resume = await this.prisma.resume.findFirst({
+        where: { id: application.resumeId, userId, status: 'CONFIRMED' },
+      });
+      if (resume && resume.parsedData) {
+        return resume;
+      }
+    }
+    return this.getConfirmedResume(userId);
+  }
+
   private async getConfirmedResume(userId: string) {
     const resume = await this.prisma.resume.findFirst({
       where: { userId, status: 'CONFIRMED' },

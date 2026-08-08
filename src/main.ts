@@ -1,5 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { PrismaService } from './prisma/prisma.service';
 import { MOCK_JWT_PAYLOAD } from './auth/mock-user';
@@ -27,7 +28,16 @@ async function bootstrap() {
   // CORS is locked to FRONTEND_URL, not "*" — this API should only ever
   // be called by our own Next.js app (from the browser) or by server-side
   // code, never by an arbitrary third-party site.
-  app.enableCors({ origin: process.env.FRONTEND_URL, credentials: true });
+  //
+  // getOrThrow, NOT process.env: an unset FRONTEND_URL would pass
+  // `origin: undefined` to enableCors, which reflects ANY origin — the
+  // exact opposite of what this line is for, and silent. Better to
+  // refuse to boot than to boot wide open.
+  const configService = app.get(ConfigService);
+  app.enableCors({
+    origin: configService.getOrThrow<string>('FRONTEND_URL'),
+    credentials: true,
+  });
   // Global ValidationPipe runs every request body through its DTO's
   // class-validator decorators (see ConfirmResumeDto) before the
   // controller method even runs. `whitelist: true` strips any property

@@ -5,3 +5,7 @@ node_modules
 .env
 
 /generated/prisma
+
+# AI assistant instructions — local to each dev's setup, not project source
+CLAUDE.md
+AGENTS.md
