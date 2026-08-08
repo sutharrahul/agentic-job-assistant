@@ -6,7 +6,7 @@ import {
   Triangle,
   Hexagon,
   Zap,
-  Flame,
+  Layers,
 } from "lucide-react";
 import { Reveal } from "@/components/landing/reveal";
 
@@ -18,7 +18,7 @@ const STACK = [
   { icon: Triangle, name: "Next.js" },
   { icon: Hexagon, name: "NestJS" },
   { icon: Zap, name: "FastAPI" },
-  { icon: Flame, name: "Redis" },
+  { icon: Layers, name: "Prisma" },
 ];
 
 export function TechStack() {

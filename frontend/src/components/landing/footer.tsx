@@ -1,21 +1,19 @@
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
-import { GitHubIcon, LinkedInIcon } from "@/components/landing/brand-icons";
+import { GitHubIcon } from "@/components/landing/brand-icons";
 
+export const GITHUB_URL = "https://github.com/sutharrahul/agentic-job-assistant";
+
+// Only links that actually resolve. This is a portfolio project, so the
+// Roadmap/Documentation/Changelog/Privacy/Terms entries that used to sit
+// here were all href="#" placeholders promising pages that don't exist.
 const FOOTER_LINKS = {
   Product: [
     { label: "Features", href: "#features" },
-    { label: "Roadmap", href: "#" },
+    { label: "How it works", href: "#workflow" },
+    { label: "FAQ", href: "#faq" },
   ],
-  Resources: [
-    { label: "Documentation", href: "#" },
-    { label: "GitHub", href: "#" },
-    { label: "Changelog", href: "#" },
-  ],
-  Legal: [
-    { label: "Privacy Policy", href: "#" },
-    { label: "Terms", href: "#" },
-  ],
+  Project: [{ label: "GitHub", href: GITHUB_URL }],
 };
 
 export function Footer() {
@@ -35,18 +33,13 @@ export function Footer() {
             </p>
             <div className="flex items-center gap-3 pt-1">
               <a
-                href="#"
+                href={GITHUB_URL}
+                target="_blank"
+                rel="noreferrer"
                 aria-label="GitHub"
                 className="text-muted-foreground transition-colors hover:text-foreground"
               >
                 <GitHubIcon className="size-5" />
-              </a>
-              <a
-                href="#"
-                aria-label="LinkedIn"
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <LinkedInIcon className="size-5" />
               </a>
             </div>
           </div>

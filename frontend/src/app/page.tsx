@@ -7,7 +7,6 @@ import { Features } from "@/components/landing/features";
 import { WorkflowSection } from "@/components/landing/workflow";
 import { DashboardPreview } from "@/components/landing/dashboard-preview";
 import { WhyChoose } from "@/components/landing/why-choose";
-import { Testimonials } from "@/components/landing/testimonials";
 import { FAQ } from "@/components/landing/faq";
 import { Footer } from "@/components/landing/footer";
 
@@ -23,7 +22,6 @@ export default function Home() {
           <WorkflowSection />
           <DashboardPreview />
           <WhyChoose />
-          <Testimonials />
           <FAQ />
         </main>
         <Footer />
