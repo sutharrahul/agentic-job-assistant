@@ -1,9 +1,11 @@
 import {
   IsBoolean,
+  IsDateString,
   IsEnum,
   IsIn,
   IsOptional,
   IsString,
+  ValidateIf,
 } from 'class-validator';
 import { ApplicationStatus } from '../../../generated/prisma';
 
@@ -41,6 +43,41 @@ export class UpdateApplicationDto {
   @IsOptional()
   @IsBoolean()
   coverLetterApproved?: boolean;
+
+  // --- Status-specific details ---------------------------------------
+  // The date fields accept "" as "clear this value" (the frontend sends
+  // that when the user empties the input) — ValidateIf skips the ISO
+  // check for empty strings, and the service maps "" to null.
+
+  @IsOptional()
+  @IsString()
+  appliedVia?: string;
+
+  @IsOptional()
+  @IsString()
+  interviewRound?: string;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== '')
+  @IsDateString()
+  interviewAt?: string;
+
+  @IsOptional()
+  @IsString()
+  offeredCtc?: string;
+
+  @IsOptional()
+  @ValidateIf((_, value) => value !== '')
+  @IsDateString()
+  joiningDate?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionStage?: string;
+
+  @IsOptional()
+  @IsString()
+  rejectionReason?: string;
 }
 
 export class GenerateCoverLetterDto {

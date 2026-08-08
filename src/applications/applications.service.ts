@@ -52,10 +52,24 @@ export class ApplicationsService {
 
   async update(id: string, userId: string, dto: UpdateApplicationDto) {
     await this.findOne(id, userId);
+    // Date fields arrive as strings in the JSON body but Prisma wants
+    // Date objects — and "" means "the user cleared the input" (-> null).
+    const { interviewAt, joiningDate, ...rest } = dto;
     return this.prisma.application.update({
       where: { id },
-      data: dto,
+      data: {
+        ...rest,
+        interviewAt: this.toDateOrClear(interviewAt),
+        joiningDate: this.toDateOrClear(joiningDate),
+      },
     });
+  }
+
+  // undefined = field absent from the PATCH, leave the column untouched;
+  // "" = clear it; anything else = a validated ISO date string.
+  private toDateOrClear(value: string | undefined): Date | null | undefined {
+    if (value === undefined) return undefined;
+    return value ? new Date(value) : null;
   }
 
   async remove(id: string, userId: string) {

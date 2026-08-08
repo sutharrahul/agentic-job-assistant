@@ -74,6 +74,18 @@ model Application {
   deadline         DateTime?
   notes            String            @default("")
   status           ApplicationStatus @default(APPLIED)
+  // --- Status-specific details ---------------------------------------
+  // All optional: an application only ever fills the group matching its
+  // current status, and the detail page shows/edits just that group.
+  // Flat nullable columns (not one Json blob) so each field stays
+  // individually typed and validated in the DTO.
+  appliedVia       String? // e.g. "LinkedIn", "Referral — Priya", "Company site"
+  interviewRound   String? // e.g. "Round 2 — Technical"
+  interviewAt      DateTime? // next scheduled interview
+  offeredCtc       String? // free text — "₹14 LPA", "$90k + equity" formats vary
+  joiningDate      DateTime?
+  rejectionStage   String? // e.g. "After technical round"
+  rejectionReason  String?
   fitScore         Float?
   // { matchedSkills: string[], missingSkills: string[], suggestions: string[] }
   // — same JSON the ai-service /analyze-fit returns (snake_case mapped
