@@ -3,13 +3,14 @@
 A guide to ApplyGraph's architecture — written so you can explain your own
 codebase in an interview without having to re-derive *why* it's built this way.
 
-> **Status check:** as of this writing, the three services are wired together
-> (routing, auth, database schema, module boundaries) but most of the actual
-> AI/business logic is still `TODO` stubs — no LangGraph nodes are wired up,
-> no Redis caching code exists yet, no resume-upload or Kanban UI is built.
-> Sections below are written to describe the **intended** design (what each
-> piece is *for*), and clearly mark what's actually implemented vs. what's
-> still a stub, using ✅ / 🚧.
+> **Read this for the *reasoning*, not the status.** This document explains
+> why the system is shaped the way it is — that part still holds. Its ✅ / 🚧
+> progress markers are historical and no longer accurate: the resume upload,
+> Kanban board, and auth UI it describes as unbuilt have since been built,
+> and the empty LangGraph stub it describes has been deleted rather than
+> finished.
+>
+> **[README.md](../README.md) is authoritative for what currently exists.**
 
 ---
 
@@ -244,13 +245,30 @@ Specific lines where "why did you do it this way?" is a fair question,
 and the honest answer is "trade-off" or "not finished yet," not "best
 practice":
 
-- **`backend/src/applications/applications.service.ts` — `updateStatus()`**
-  casts the incoming string straight to `ApplicationStatus` with no
-  validation (`status as ApplicationStatus`). A bad value reaches Prisma
-  as a raw DB error instead of a clean 400. Real fix: validate against
-  the enum (or use a NestJS DTO with `class-validator`) before the cast.
+- ~~**`updateStatus()` casts the status string with no validation.**~~
+  *Fixed* — `update-application.dto.ts` validates against the enum with
+  `class-validator` before it reaches Prisma.
 
-- **`backend/src/auth/guards/supabase-auth.guard.ts` — the `catch` block**
+- ~~**No file-type/size validation for resume uploads.**~~ *Fixed* —
+  `resumes.controller.ts` enforces a 5MB cap and PDF/DOCX only, by magic
+  number rather than the client-supplied mimetype, and the browser now
+  checks the size up front too.
+
+- ~~**The LangGraph pipeline doesn't exist** — `build_graph()` returns an
+  empty, uncompiled graph.~~ *Resolved by deletion, not completion.* The
+  empty stub was removed. The one real LangGraph in the codebase is
+  `ai-service/app/graph/interview_prep.py` — a compiled two-node graph
+  (`derive_focus_areas → generate_questions`). If asked to walk through
+  "the LangGraph code," that is the honest thing to walk through, and the
+  cover-letter approval flow is a deliberate simplification (see below).
+
+- **Cover-letter approval is a database boolean, not a LangGraph
+  `interrupt`.** A durable interrupt needs checkpointer-backed state so a
+  paused graph can be resumed across processes. The boolean gives the
+  same user-facing guarantee at this scope. Know the difference — it's a
+  likely follow-up question.
+
+- **`backend/src/auth/guards/` — the `catch` block**
   treats "signature invalid," "token expired," and "wrong secret
   configured" identically (generic 401). Good for not leaking info to an
   attacker, bad for debugging your own misconfiguration — if
@@ -262,13 +280,12 @@ practice":
   from Client Components. Using it inside a Server Component wouldn't
   throw, but it would silently send no auth token.
 
-- **No file-type/size validation anywhere yet** for resume uploads (the
-  route doesn't exist yet, but when it does: PDF/docx only, some size
-  cap — currently nothing enforces this).
-
-- **No rate limiting implemented** despite `REDIS_URL` being in the
-  backend's env vars — right now nothing stops a user (or a bug in the
-  frontend) from spamming `/analyze-fit` and burning Gemini quota.
+- **No rate limiting and no caching.** Nothing stops a user (or a bug in
+  the frontend) from spamming `/analyze-fit` and burning Gemini quota,
+  and scoring the same resume against the same job re-runs the model
+  every time. Redis was the planned answer to both; it is not wired up,
+  and the misleading `REDIS_URL` env var and landing-page logo have been
+  removed rather than left implying otherwise.
 
 - **`prisma.module.ts` uses `@Global()`** — convenient (no need to import
   `PrismaModule` everywhere), but it means `PrismaService` availability

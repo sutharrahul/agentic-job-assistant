@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     # Not required at all for local Ollama-only development.
     gemini_api_key: str | None = None
 
+    # Defaults to Google's moving "latest" alias, which is convenient but
+    # means the model under you can change without warning. Pin it to a
+    # dated id (e.g. gemini-2.5-flash) via GEMINI_CHAT_MODEL when you want
+    # reproducible behaviour — config change, no code change.
+    gemini_chat_model: str = "gemini-flash-latest"
+
     # Ollama config — only used when llm_provider="ollama". Defaults
     # assume `ollama serve` running locally with these models already
     # pulled (`ollama pull gemma3:4b`, `ollama pull nomic-embed-text`).
