@@ -11,10 +11,21 @@ import {
   MapPin,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +65,8 @@ export function ApplicationDetail({ id }: { id: string }) {
   const [isLoading, setIsLoading] = useState(true);
   const [notes, setNotes] = useState("");
   const [notesSaved, setNotesSaved] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     getApplication(id)
@@ -89,21 +102,36 @@ export function ApplicationDetail({ id }: { id: string }) {
 
   function handleStatusChange(status: ApplicationStatus) {
     // Optimistic — the dropdown closing + badge updating instantly
-    // matters more than the rare failed PATCH (state refetches on nav).
+    // matters more than the rare failed PATCH — but a failed PATCH still
+    // needs to be visible, or the UI and the database quietly disagree.
+    const previous = app;
     setApp((prev) => (prev ? { ...prev, status } : prev));
-    void updateApplication(id, { status });
+    updateApplication(id, { status }).catch(() => {
+      setApp(previous);
+      toast.error("Couldn't save the status change — reverted.");
+    });
   }
 
   async function handleSaveNotes() {
-    const updated = await updateApplication(id, { notes });
-    setApp(updated);
-    setNotesSaved(true);
-    setTimeout(() => setNotesSaved(false), 2000);
+    try {
+      const updated = await updateApplication(id, { notes });
+      setApp(updated);
+      setNotesSaved(true);
+      setTimeout(() => setNotesSaved(false), 2000);
+    } catch {
+      toast.error("Couldn't save notes — please try again.");
+    }
   }
 
   async function handleDelete() {
-    await deleteApplication(id);
-    router.push("/applications");
+    setIsDeleting(true);
+    try {
+      await deleteApplication(id);
+      router.push("/applications");
+    } catch {
+      toast.error("Couldn't delete — please try again.");
+      setIsDeleting(false);
+    }
   }
 
   return (
@@ -178,10 +206,34 @@ export function ApplicationDetail({ id }: { id: string }) {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="destructive" size="icon" onClick={handleDelete}>
-            <Trash2 />
-            <span className="sr-only">Delete application</span>
-          </Button>
+          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <DialogTrigger render={<Button variant="destructive" size="icon" />}>
+              <Trash2 />
+              <span className="sr-only">Delete application</span>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Delete this application?</DialogTitle>
+                <DialogDescription>
+                  This removes {app.company} — {app.jobTitle}, along with its
+                  fit analysis, cover letter, and interview prep. This
+                  can&apos;t be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <DialogClose render={<Button variant="outline" />}>
+                  Cancel
+                </DialogClose>
+                <Button
+                  variant="destructive"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
