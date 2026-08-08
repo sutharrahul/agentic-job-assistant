@@ -139,6 +139,8 @@ npm run dev
 | `NEXT_PUBLIC_API_URL` | Base URL of the NestJS backend |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk client key |
 | `CLERK_SECRET_KEY` | Used by Clerk's Next.js middleware |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `..._SIGN_UP_URL` | `/login` and `/signup` — this app doesn't use Clerk's default paths |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` / `..._SIGN_UP_...` | Where to land after authenticating (`/resume`) |
 
 ## Project structure
 

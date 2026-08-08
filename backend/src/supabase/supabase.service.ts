@@ -11,13 +11,15 @@ export class SupabaseService implements OnModuleInit {
   private readonly resumeBucket: string;
 
   constructor(private readonly configService: ConfigService) {
-    // This client uses the SERVICE ROLE key, not the anon key the
-    // frontend uses — service role bypasses Row Level Security
-    // entirely. That's appropriate here because NestJS is a trusted
-    // server, already responsible for its own authorization (the
-    // SupabaseAuthGuard + `userId` scoping in ResumesService), so it
-    // doesn't need Postgres-level RLS as a second gate the way
-    // browser-side Supabase calls would.
+    // Supabase is used here for STORAGE ONLY — authentication is Clerk's
+    // job, and the frontend never talks to Supabase at all.
+    //
+    // This client uses the SERVICE ROLE key, which bypasses Row Level
+    // Security entirely. That's appropriate because NestJS is a trusted
+    // server that already does its own authorization (ClerkAuthGuard
+    // plus `userId` scoping in ResumesService), so it doesn't need
+    // Postgres-level RLS as a second gate the way a browser-side client
+    // would. It also means this key must never reach the frontend.
     this.client = createClient(
       this.configService.getOrThrow<string>('SUPABASE_URL'),
       this.configService.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
