@@ -10,6 +10,7 @@ import {
   TrendingUp,
   Users,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +48,9 @@ export default function DashboardPage() {
   useEffect(() => {
     listApplications()
       .then(setApps)
-      .catch(() => {})
+      .catch(() =>
+        toast.error("Couldn't load applications — is the backend running?"),
+      )
       .finally(() => setIsLoading(false));
   }, []);
 

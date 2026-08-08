@@ -13,6 +13,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ModeToggle } from "@/components/mode-toggle";
@@ -22,6 +23,7 @@ import { ResumePreviewForm } from "@/components/resume/resume-preview-form";
 import { Resume } from "@/lib/types/resume";
 import { Application, ApplicationStatus } from "@/lib/types/application";
 import { isStale, listApplications } from "@/lib/api/applications";
+import { latestResume, listResumes } from "@/lib/api/resumes";
 import { cn } from "@/lib/utils";
 
 // Standalone all-in-one workspace: everything the dashboard's three nav
@@ -59,8 +61,13 @@ export default function WorkspacePage() {
   useEffect(() => {
     listApplications()
       .then(setApps)
-      .catch(() => {})
+      .catch(() =>
+        toast.error("Couldn't load applications — is the backend running?"),
+      )
       .finally(() => setIsLoading(false));
+    listResumes()
+      .then((resumes) => setResume(latestResume(resumes)))
+      .catch(() => toast.error("Couldn't load your resume."));
   }, []);
 
   // Scrollspy: highlight the pill for whichever section currently sits in
