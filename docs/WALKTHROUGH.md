@@ -280,12 +280,24 @@ practice":
   from Client Components. Using it inside a Server Component wouldn't
   throw, but it would silently send no auth token.
 
-- **No rate limiting and no caching.** Nothing stops a user (or a bug in
-  the frontend) from spamming `/analyze-fit` and burning Gemini quota,
-  and scoring the same resume against the same job re-runs the model
-  every time. Redis was the planned answer to both; it is not wired up,
-  and the misleading `REDIS_URL` env var and landing-page logo have been
-  removed rather than left implying otherwise.
+- ~~**No rate limiting.**~~ *Fixed* — `@nestjs/throttler` now caps the
+  quota-spending routes per authenticated user (`UserThrottlerGuard`
+  overrides `getTracker` to key on the Clerk user id rather than IP,
+  because behind a reverse proxy every request shares one address).
+  Two windows, because a per-minute cap alone still allows thousands of
+  calls a day: 10/min and 60/day on the AI actions, 5/min and 40/day on
+  resume upload.
+
+- **Still no caching.** Scoring the same resume against the same job
+  re-runs the model every time. Redis was the planned answer; it is not
+  wired up, and the misleading `REDIS_URL` env var and landing-page logo
+  were removed rather than left implying otherwise. Note the trade-off
+  that rate limiting does *not* solve this — it bounds abuse, not waste.
+
+- **Throttle counters are in-memory.** They reset on restart and aren't
+  shared across instances, so a multi-instance deployment would need
+  Redis-backed storage to enforce limits accurately. Fine on a single
+  free-tier instance; know that it's a deliberate scope choice.
 
 - **`prisma.module.ts` uses `@Global()`** — convenient (no need to import
   `PrismaModule` everywhere), but it means `PrismaService` availability

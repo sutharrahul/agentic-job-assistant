@@ -63,6 +63,7 @@ All AI calls funnel through a single `OrchestrationService`, so timeouts, retrie
 - **Provider-agnostic by design.** `app/core/llm.py` is the only file that imports a model class. Switching between local Ollama and Gemini is one env var, which is how this was developed locally for free and deployed on Gemini.
 - **Human-in-the-loop.** The AI service returns a cover letter *draft*. NestJS stores it with `coverLetterApproved: false`, and only an explicit user click flips that flag.
 - **Files are passed by signed URL.** NestJS uploads the resume to private storage and hands FastAPI a short-lived signed URL rather than the raw bytes, so the AI service never needs storage credentials.
+- **Quota-spending routes are rate limited per user.** The AI actions and resume upload are capped on two windows (per-minute and per-day), keyed on the authenticated user rather than IP — behind a reverse proxy every request shares one address, so IP-based limits would throttle all users as a single bucket.
 
 ## Tech stack
 
@@ -170,7 +171,8 @@ Being explicit about what this does *not* do:
 - **Cover-letter approval is a database flag, not a LangGraph `interrupt`.** A durable interrupt would need checkpointer-backed state; a boolean gives the same user-facing guarantee for this scope.
 - **Resume parsing is synchronous inside the upload request.** No queue or worker — fine at this scale, but a crash mid-parse leaves a row stuck in `PROCESSING`.
 - **DOCX extraction reads paragraphs only,** so text inside tables, headers, and text boxes is missed. Scanned/image-only PDFs are rejected rather than OCR'd.
-- **No fit-analysis caching yet.** Scoring the same resume against the same job re-runs the model.
+- **No fit-analysis caching yet.** Scoring the same resume against the same job re-runs the model. Rate limiting bounds abuse, but not this kind of waste.
+- **Rate-limit counters live in memory,** so they reset on restart and aren't shared across instances. Accurate enforcement across several instances would need Redis-backed storage.
 - **No automated tests.** The scaffolding tests that shipped with NestJS were removed rather than left as fake coverage.
 
 ## License
