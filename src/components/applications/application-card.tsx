@@ -16,6 +16,31 @@ function formatDate(iso: string) {
   });
 }
 
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("en-IN", {
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+// The one status-specific detail worth surfacing on the board (the rest
+// live on the detail page): where you applied, when the interview is,
+// what they offered, or where it fell through.
+function statusDetail(app: Application): string | null {
+  switch (app.status) {
+    case "APPLIED":
+      return app.appliedVia ? `via ${app.appliedVia}` : null;
+    case "INTERVIEW":
+      return app.interviewAt ? formatDateTime(app.interviewAt) : null;
+    case "OFFER":
+      return app.offeredCtc;
+    case "REJECTED":
+      return app.rejectionStage || app.rejectionReason;
+  }
+}
+
 // Pure presentation — used both inside the draggable wrapper below and as
 // the DragOverlay preview in kanban-board.tsx (the overlay must not carry
 // drag listeners of its own, hence the split).
@@ -26,6 +51,8 @@ export function ApplicationCardView({
   app: Application;
   className?: string;
 }) {
+  const detail = statusDetail(app);
+
   return (
     <Card
       className={cn(
@@ -43,6 +70,11 @@ export function ApplicationCardView({
             <p className="truncate text-sm text-muted-foreground">
               {app.jobTitle}
             </p>
+            {detail && (
+              <p className="truncate text-xs text-muted-foreground/80">
+                {detail}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">

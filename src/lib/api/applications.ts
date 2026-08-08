@@ -24,6 +24,14 @@ export interface UpdateApplicationInput {
   coverLetter?: string;
   coverLetterTone?: CoverLetterTone;
   coverLetterApproved?: boolean;
+  // Status-specific details. Date fields take ISO strings; "" clears.
+  appliedVia?: string;
+  interviewRound?: string;
+  interviewAt?: string;
+  offeredCtc?: string;
+  joiningDate?: string;
+  rejectionStage?: string;
+  rejectionReason?: string;
 }
 
 export async function listApplications(): Promise<Application[]> {

@@ -30,6 +30,9 @@ export function CoverLetterCard({
   // nothing is "real" until the user approves it.
   const [content, setContent] = useState(app.coverLetter ?? "");
   const [hasLocalEdits, setHasLocalEdits] = useState(false);
+  // "Write manually" opens the editor without generating anything — the
+  // AI path is optional, not the only way in.
+  const [isManual, setIsManual] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,14 +102,20 @@ export function CoverLetterCard({
           ))}
         </div>
 
-        {!content && !isGenerating && (
+        {!content && !isGenerating && !isManual && (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <PenLine className="size-6 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">
-              Generate a tailored cover letter for this role. You can edit it
-              before approving.
+              Generate a tailored cover letter for this role — or write your
+              own from scratch. Either way, you edit and approve it.
             </p>
-            <Button onClick={handleGenerate}>Generate cover letter</Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button onClick={handleGenerate}>Generate cover letter</Button>
+              <Button variant="outline" onClick={() => setIsManual(true)}>
+                <PenLine data-icon="inline-start" />
+                Write manually
+              </Button>
+            </div>
           </div>
         )}
 
@@ -116,7 +125,7 @@ export function CoverLetterCard({
           </p>
         )}
 
-        {content && (
+        {(content || isManual) && (
           <>
             <Textarea
               value={content}
@@ -127,13 +136,16 @@ export function CoverLetterCard({
                 setHasLocalEdits(true);
               }}
               rows={12}
+              placeholder="Dear Hiring Manager, ..."
               className="min-h-56 font-mono text-sm"
               disabled={isGenerating}
             />
             <div className="flex flex-col gap-2 sm:flex-row">
               <Button
                 onClick={handleApprove}
-                disabled={isGenerating || isSaving || approved}
+                disabled={
+                  isGenerating || isSaving || approved || !content.trim()
+                }
               >
                 <Check data-icon="inline-start" />
                 {approved ? "Approved" : isSaving ? "Saving..." : "Approve letter"}
@@ -144,7 +156,11 @@ export function CoverLetterCard({
                 disabled={isGenerating}
               >
                 <RefreshCw data-icon="inline-start" />
-                {isGenerating ? "Generating..." : "Regenerate"}
+                {isGenerating
+                  ? "Generating..."
+                  : content
+                    ? "Regenerate"
+                    : "Generate with AI"}
               </Button>
             </div>
           </>

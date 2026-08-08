@@ -35,6 +35,15 @@ export interface Application {
   deadline: string | null; // ISO datetime
   notes: string;
   status: ApplicationStatus;
+  // Status-specific details — only the group matching `status` is
+  // meaningful (see the schema comment in backend/prisma/schema.prisma).
+  appliedVia: string | null;
+  interviewRound: string | null;
+  interviewAt: string | null; // ISO datetime
+  offeredCtc: string | null;
+  joiningDate: string | null; // ISO datetime
+  rejectionStage: string | null;
+  rejectionReason: string | null;
   fitScore: number | null;
   skillGapAnalysis: SkillGapAnalysis | null;
   coverLetter: string | null;

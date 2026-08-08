@@ -22,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FitAnalysisCard } from "@/components/applications/fit-analysis-card";
+import { StatusDetailsCard } from "@/components/applications/status-details-card";
 import { CoverLetterCard } from "@/components/applications/cover-letter-card";
 import { InterviewPrepCard } from "@/components/applications/interview-prep-card";
 import { Application, ApplicationStatus } from "@/lib/types/application";
@@ -205,6 +206,9 @@ export function ApplicationDetail({ id }: { id: string }) {
         </div>
 
         <div className="min-w-0 space-y-4">
+          {/* Contextual per-status form — switches with the dropdown above. */}
+          <StatusDetailsCard app={app} onUpdated={setApp} />
+
           <FitAnalysisCard app={app} onUpdated={setApp} />
 
           <Card>
