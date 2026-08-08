@@ -1,0 +1,105 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApplicationStatus {
+  APPLIED
+  INTERVIEW
+  OFFER
+  REJECTED
+}
+
+enum ResumeStatus {
+  PROCESSING
+  PARSED
+  CONFIRMED
+  FAILED
+}
+
+// User.id has NO @default(uuid()) — on purpose. Supabase Auth already
+// generates a UUID for every signed-up user (the JWT's `sub` claim).
+// This id must be set to THAT SAME uuid when the row is created, so a
+// user's Prisma row and their Supabase Auth identity are always the same
+// id. If Prisma generated its own random id here, there'd be no way to
+// go from "the JWT says this user" to "this row in our database."
+model User {
+  id           String        @id
+  email        String        @unique
+  createdAt    DateTime      @default(now())
+  resumes      Resume[]
+  applications Application[]
+}
+
+model Resume {
+  id           String        @id @default(uuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id])
+  fileName     String
+  storagePath  String
+  // Row is created as PROCESSING right when the upload+Storage write
+  // succeeds — before we know whether Gemini parsing will succeed —
+  // so there's always a record of the attempt, even if parsing fails.
+  status       ResumeStatus  @default(PROCESSING)
+  // Shape matches ai-service's ParsedResumeData exactly (summary,
+  // skills, experience[], education[], projects[]) — see
+  // ai-service/app/schemas/resume.py. Stored as-is from FastAPI's
+  // response, then overwritten with the user's edits on confirm.
+  parsedData   Json?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
+}
+
+model Application {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id])
+  resumeId         String?
+  resume           Resume?           @relation(fields: [resumeId], references: [id])
+  company          String
+  jobTitle         String
+  jobDescription   String
+  location         String?
+  deadline         DateTime?
+  notes            String            @default("")
+  status           ApplicationStatus @default(APPLIED)
+  // --- Status-specific details ---------------------------------------
+  // All optional: an application only ever fills the group matching its
+  // current status, and the detail page shows/edits just that group.
+  // Flat nullable columns (not one Json blob) so each field stays
+  // individually typed and validated in the DTO.
+  appliedVia       String? // e.g. "LinkedIn", "Referral — Priya", "Company site"
+  interviewRound   String? // e.g. "Round 2 — Technical"
+  interviewAt      DateTime? // next scheduled interview
+  offeredCtc       String? // free text — "₹14 LPA", "$90k + equity" formats vary
+  joiningDate      DateTime?
+  rejectionStage   String? // e.g. "After technical round"
+  rejectionReason  String?
+  fitScore         Float?
+  // { matchedSkills: string[], missingSkills: string[], suggestions: string[] }
+  // — same JSON the ai-service /analyze-fit returns (snake_case mapped
+  // by NestJS before persisting). Stored as one blob because it's only
+  // ever read/written as a unit.
+  skillGapAnalysis Json?
+  coverLetter      String?
+  coverLetterTone  String?
+  // Human-in-the-loop flag: false when generated or after any manual
+  // edit; only true once the user explicitly clicks Approve.
+  coverLetterApproved Boolean        @default(false)
+  // { focusAreas, technicalQuestions: [{question, talkingPoints}],
+  //   behavioralQuestions: [...], gapsToPrepare } from /interview-prep.
+  interviewPrep    Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+}

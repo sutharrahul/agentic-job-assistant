@@ -1,0 +1,11 @@
+node_modules
+/dist
+.DS_Store
+# Keep environment variables out of version control
+.env
+
+/generated/prisma
+
+# AI assistant instructions — local to each dev's setup, not project source
+CLAUDE.md
+AGENTS.md
