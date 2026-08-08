@@ -1,5 +1,5 @@
 import axios from "axios";
-import { createClient } from "@/lib/supabase/client";
+import { getToken } from "@clerk/nextjs";
 
 // `api` is the ONE axios instance the whole app should import — never
 // call plain axios.get/post directly. That's what makes the interceptor
@@ -17,32 +17,30 @@ export const api = axios.create({
 });
 
 // An axios "request interceptor" is a function that runs on every
-// outgoing request before it's sent, and gets to modify it. Here, we use
-// that hook to read the current Supabase session and attach its token
-// as an Authorization header — this is what NestJS's SupabaseAuthGuard
-// verifies on the other end (see backend/src/auth/guards).
-// Note: this uses the BROWSER Supabase client (see supabase/client.ts),
-// so `api` only works correctly from Client Components — the browser
-// client reads the session from the browser's own storage. A Server
-// Component calling `api` wouldn't see the logged-in user's session.
+// outgoing request before it's sent, and gets to modify it. Here it
+// reads the current Clerk session token and attaches it as a Bearer
+// header — which is what NestJS's ClerkAuthGuard verifies on the other
+// end (see backend/src/auth/guards/clerk-auth.guard.ts).
+//
+// Clerk's standalone getToken() is used rather than the useAuth() hook
+// because interceptors are plain functions outside the React tree and
+// can't call hooks. It's built for this: it waits for Clerk to finish
+// initializing, so a request fired during page load doesn't silently go
+// out unauthenticated just because Clerk hadn't booted yet.
+//
+// Browser-only: it throws outside a browser, so `api` is for Client
+// Components. A Server Component calling it would send no token.
 api.interceptors.request.use(async (config) => {
-  // DEV-ONLY AUTH BYPASS — mirrors backend's SupabaseAuthGuard (which
-  // has its OWN separate BYPASS_AUTH check, not just trusting this).
-  // There's no real Supabase session to fetch in bypass mode (auth was
-  // never actually performed), so skip straight past the lookup below
-  // rather than asking a possibly-fake/unconfigured Supabase project
-  // for a session that doesn't exist.
-  if (process.env.NEXT_PUBLIC_BYPASS_AUTH === "true") {
-    return config;
-  }
-
-  const supabase = createClient();
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
+  try {
+    const token = await getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch {
+    // Clerk failed to load, or the browser is offline. Send the request
+    // anyway and let the backend answer with a 401 — that path is
+    // already handled, and swallowing it here keeps one dead network
+    // from turning into an unhandled rejection on every call.
   }
 
   return config;

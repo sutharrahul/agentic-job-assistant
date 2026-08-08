@@ -1,5 +1,3 @@
-import { AuthModalProvider } from "@/lib/auth/auth-modal-context";
-import { AuthModal } from "@/components/landing/auth-modal";
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
 import { TechStack } from "@/components/landing/tech-stack";
@@ -12,21 +10,18 @@ import { Footer } from "@/components/landing/footer";
 
 export default function Home() {
   return (
-    <AuthModalProvider>
-      <div className="flex min-h-screen flex-col">
-        <Navbar />
-        <main className="flex-1">
-          <Hero />
-          <TechStack />
-          <Features />
-          <WorkflowSection />
-          <DashboardPreview />
-          <WhyChoose />
-          <FAQ />
-        </main>
-        <Footer />
-      </div>
-      <AuthModal />
-    </AuthModalProvider>
+    <div className="flex min-h-screen flex-col">
+      <Navbar />
+      <main className="flex-1">
+        <Hero />
+        <TechStack />
+        <Features />
+        <WorkflowSection />
+        <DashboardPreview />
+        <WhyChoose />
+        <FAQ />
+      </main>
+      <Footer />
+    </div>
   );
 }

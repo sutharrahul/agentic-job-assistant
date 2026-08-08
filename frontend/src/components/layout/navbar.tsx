@@ -1,21 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Home, LogOut, Sparkles } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { usePathname } from "next/navigation";
+import { Home, Sparkles } from "lucide-react";
+import { UserButton } from "@clerk/nextjs";
 import { ModeToggle } from "@/components/mode-toggle";
-import { useAuth } from "@/lib/auth/auth-context";
-import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -26,16 +15,6 @@ const NAV_ITEMS = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { user, isBypassed } = useAuth();
-  const router = useRouter();
-
-  async function handleLogout() {
-    // Bypass mode has no real Supabase session to end — just leave the app.
-    if (!isBypassed) {
-      await createClient().auth.signOut();
-    }
-    router.push("/");
-  }
 
   return (
     <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b bg-background/80 px-4 backdrop-blur-md sm:px-6">
@@ -69,34 +48,19 @@ export function Navbar() {
 
       <div className="flex items-center gap-2">
         <ModeToggle />
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button variant="ghost" size="icon" className="rounded-full" />
-            }
-          >
-            <Avatar className="h-8 w-8">
-              <AvatarFallback>
-                {user?.email?.[0]?.toUpperCase() ?? "?"}
-              </AvatarFallback>
-            </Avatar>
-            <span className="sr-only">Open account menu</span>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuLabel className="truncate">
-              {user?.email ?? "Signed in"}
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push("/")}>
-              <Home />
-              Landing page
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={handleLogout}>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Clerk's UserButton already provides the avatar, the account
+            email, Manage account and Sign out. Only the link back to the
+            landing page is ours, added as a custom menu item so there's
+            still one menu rather than two. */}
+        <UserButton>
+          <UserButton.MenuItems>
+            <UserButton.Link
+              label="Landing page"
+              labelIcon={<Home className="size-4" />}
+              href="/"
+            />
+          </UserButton.MenuItems>
+        </UserButton>
       </div>
     </header>
   );

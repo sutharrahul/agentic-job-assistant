@@ -14,8 +14,7 @@ import {
   SheetTitle,
   SheetClose,
 } from "@/components/ui/sheet";
-import { useAuthModal } from "@/lib/auth/auth-modal-context";
-import { useAuth } from "@/lib/auth/auth-context";
+import { Show } from "@clerk/nextjs";
 
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
@@ -25,20 +24,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const { openModal } = useAuthModal();
-  const { isBypassed } = useAuth();
   const router = useRouter();
-
-  // With NEXT_PUBLIC_BYPASS_AUTH on, there's no real Supabase project to
-  // sign in against — go straight to the app instead of opening a modal
-  // that can only fail.
-  function handleAuthClick(tab: "signin" | "signup") {
-    if (isBypassed) {
-      router.push("/dashboard");
-      return;
-    }
-    openModal(tab);
-  }
 
   useEffect(() => {
     function handleScroll() {
@@ -80,11 +66,29 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <ModeToggle />
+          {/* Show renders null while Clerk is still loading, so these
+              swap in once the session is known rather than flashing the
+              wrong pair. */}
           <div className="hidden items-center gap-2 md:flex">
-            <Button variant="ghost" onClick={() => handleAuthClick("signin")}>
-              Log in
-            </Button>
-            <Button onClick={() => handleAuthClick("signup")}>Get Started</Button>
+            <Show
+              when="signed-out"
+              fallback={
+                <Button nativeButton={false} render={<Link href="/dashboard" />}>
+                  Go to app
+                </Button>
+              }
+            >
+              <Button
+                variant="ghost"
+                nativeButton={false}
+                render={<Link href="/login" />}
+              >
+                Log in
+              </Button>
+              <Button nativeButton={false} render={<Link href="/signup" />}>
+                Get Started
+              </Button>
+            </Show>
           </div>
 
           <Sheet>
@@ -116,11 +120,18 @@ export function Navbar() {
               </nav>
               <div className="mt-auto flex flex-col gap-2 p-4">
                 <SheetClose
-                  render={<Button variant="outline" onClick={() => handleAuthClick("signin")} />}
+                  render={
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/login")}
+                    />
+                  }
                 >
                   Log in
                 </SheetClose>
-                <SheetClose render={<Button onClick={() => handleAuthClick("signup")} />}>
+                <SheetClose
+                  render={<Button onClick={() => router.push("/signup")} />}
+                >
                   Get Started
                 </SheetClose>
               </div>
