@@ -17,8 +17,15 @@ from langchain_google_genai import (
     GoogleGenerativeAIEmbeddings,
 )
 from langchain_ollama import ChatOllama, OllamaEmbeddings
+from langchain_openai import ChatOpenAI
 
 from app.core.config import settings
+
+# OpenRouter speaks the OpenAI wire format, so the OpenAI client works
+# against it unchanged — only the base URL differs. That's the whole
+# reason a third provider costs a handful of lines here rather than a
+# new integration.
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 # The chat model id now comes from settings (GEMINI_CHAT_MODEL) so it can
 # be pinned per-environment without a code change — see core/config.py.
@@ -30,6 +37,13 @@ def get_chat_model(temperature: float = 0) -> BaseChatModel:
         return ChatOllama(
             base_url=settings.ollama_base_url,
             model=settings.ollama_chat_model,
+            temperature=temperature,
+        )
+    if settings.llm_provider == "openrouter":
+        return ChatOpenAI(
+            base_url=OPENROUTER_BASE_URL,
+            api_key=settings.openrouter_api_key,
+            model=settings.openrouter_chat_model,
             temperature=temperature,
         )
     return ChatGoogleGenerativeAI(
@@ -44,6 +58,19 @@ def get_embeddings_model() -> Embeddings:
         return OllamaEmbeddings(
             base_url=settings.ollama_base_url,
             model=settings.ollama_embedding_model,
+        )
+    if settings.llm_provider == "openrouter":
+        # OpenRouter is a chat-completions gateway; it has no embeddings
+        # endpoint. Fail loudly rather than falling through to the Gemini
+        # branch below, which would build a client with a null API key and
+        # only break later, at call time, with a confusing auth error.
+        #
+        # Nothing calls this today (there is no vector store or RAG in the
+        # app), so this raise is unreachable in practice — it exists so the
+        # first person to add embeddings gets a straight answer.
+        raise NotImplementedError(
+            "OpenRouter does not provide embeddings. Set LLM_PROVIDER=ollama "
+            "or LLM_PROVIDER=gemini if you need get_embeddings_model()."
         )
     return GoogleGenerativeAIEmbeddings(
         model=GEMINI_EMBEDDING_MODEL,
