@@ -1,0 +1,130 @@
+# Render Blueprint — defines both backend services in one file so the
+# deployment is reproducible instead of a sequence of dashboard clicks.
+# The frontend is NOT here: it goes to Vercel, which auto-detects Next.js
+# from frontend/package.json and needs no config of its own.
+#
+# First deploy: Render → New → Blueprint → point at this repo. Values
+# marked `sync: false` are secrets and must be pasted in the dashboard;
+# everything else is set from this file.
+#
+# Order matters on the very first deploy, because two of the URLs don't
+# exist until the services they name are up. Deploy with the placeholder
+# localhost values below (they only need to be PRESENT — main.ts calls
+# getOrThrow on FRONTEND_URL and refuses to boot without it), then fill in
+# the real URLs and redeploy. See README's Deployment section.
+
+services:
+  # ---------------------------------------------------------------------
+  # NestJS app backend — owns the database, auth, and every AI call.
+  # ---------------------------------------------------------------------
+  - type: web
+    name: job-assistant-api
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: backend
+
+    # `prisma generate` is NOT optional here: backend/generated/ is
+    # gitignored, so the client does not exist in a fresh checkout and the
+    # build fails at the first import without it.
+    #
+    # `migrate deploy` runs at build time rather than as a pre-deploy hook
+    # because pre-deploy hooks aren't available on the free plan.
+    buildCommand: npm ci && npx prisma generate && npm run build && npx prisma migrate deploy
+    startCommand: node dist/main
+    healthCheckPath: /health
+
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+
+      # Supabase SESSION pooler string, port 5432. Not the direct string
+      # (IPv6-only — Render cannot reach it) and not the transaction
+      # pooler on 6543 (prisma migrate deploy cannot run through it).
+      - key: DATABASE_URL
+        sync: false
+
+      # The Vercel production URL, no trailing slash — main.ts compares
+      # the CORS origin as an exact string. Preview deployments will be
+      # blocked by design; only this one origin is allowed.
+      - key: FRONTEND_URL
+        sync: false
+
+      - key: CLERK_SECRET_KEY
+        sync: false
+
+      # From the Clerk dashboard's Webhooks page, for the endpoint
+      # pointing at https://job-assistant-api.onrender.com/webhooks/clerk
+      - key: CLERK_WEBHOOK_SIGNING_SECRET
+        sync: false
+
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # The AI service's Render URL, no trailing slash (the path is
+      # concatenated onto it in OrchestrationService).
+      - key: AI_SERVICE_URL
+        sync: false
+
+      # Generated once by Render. The AI service reads THIS value via a
+      # fromService reference below, so the two can never drift — a
+      # mismatch would 401 every AI call, which is a miserable thing to
+      # debug from a dashboard.
+      - key: AI_SERVICE_TOKEN
+        generateValue: true
+
+  # ---------------------------------------------------------------------
+  # FastAPI AI service — stateless, no database, called only by the API.
+  # ---------------------------------------------------------------------
+  - type: web
+    name: job-assistant-ai
+    runtime: python
+    plan: free
+    region: singapore
+    rootDir: ai-service
+
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+
+    envVars:
+      # Pinned because the host's default moves. 3.12 has the widest wheel
+      # coverage for the pinned requirements.txt; if a build ever fails on
+      # a package with no wheel, this is the first knob to turn.
+      - key: PYTHON_VERSION
+        value: "3.12.11"
+
+      - key: LLM_PROVIDER
+        value: openrouter
+
+      # Pinned to a specific model, never a routing alias like
+      # "openrouter/free" — that picks a different model per request,
+      # which would destroy the determinism temperature=0 fit scoring
+      # depends on.
+      #
+      # This model is verified to advertise `tools` in its
+      # supported_parameters, which is non-negotiable: three of the four
+      # endpoints use with_structured_output(), and LangChain implements
+      # that over function calling for OpenAI-compatible providers. A
+      # model without tool support fails resume parsing, fit analysis and
+      # interview prep while cover letters keep working — a half-broken
+      # state that looks like a bug in our code rather than a bad model
+      # choice. Re-check before ever changing this:
+      #   curl -s https://openrouter.ai/api/v1/models
+      - key: OPENROUTER_CHAT_MODEL
+        value: google/gemma-4-31b-it:free
+
+      - key: OPENROUTER_API_KEY
+        sync: false
+
+      # Same value as the API service's AI_SERVICE_TOKEN, copied by Render
+      # rather than by hand. This service is publicly reachable (the free
+      # plan has no private services) and has no other auth, so without
+      # this anyone could spend the LLM quota configured above.
+      - key: SERVICE_TOKEN
+        fromService:
+          name: job-assistant-api
+          type: web
+          envVarKey: AI_SERVICE_TOKEN
