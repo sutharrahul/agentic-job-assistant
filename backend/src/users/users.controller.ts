@@ -33,6 +33,10 @@ export class UsersController {
   // endpoint to the internet at all.
   @Post('sync')
   sync(@CurrentUser() user: ClerkJwtPayload) {
-    return this.usersService.upsertFromAuth(user.sub, user.email ?? '');
+    // Pass the claim through as-is, including undefined. UsersService
+    // resolves a missing address from Clerk rather than substituting a
+    // blank one, which used to collide with User.email's unique index on
+    // the second user to sign up.
+    return this.usersService.upsertFromAuth(user.sub, user.email);
   }
 }

@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { ArrowRight, Play, Sparkles, Gauge, FileCheck2, PenLine, MessageSquareHeart } from "lucide-react";
-import { Show } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
@@ -37,30 +36,19 @@ export function Hero() {
         </p>
 
         <div className="animate-in fade-in slide-in-from-bottom-3 flex w-full flex-col gap-3 duration-700 sm:w-auto sm:flex-row">
-          <Show
-            when="signed-out"
-            fallback={
-              <Button
-                size="lg"
-                className="gap-1.5"
-                nativeButton={false}
-                render={<Link href="/dashboard" />}
-              >
-                Go to app
-                <ArrowRight data-icon="inline-end" />
-              </Button>
-            }
+          {/* Not wrapped in Clerk's <Show> — see the note in
+              landing/navbar.tsx. It renders null during SSR, which left
+              the hero with no primary call to action until client JS
+              loaded. */}
+          <Button
+            size="lg"
+            className="gap-1.5"
+            nativeButton={false}
+            render={<Link href="/signup" />}
           >
-            <Button
-              size="lg"
-              className="gap-1.5"
-              nativeButton={false}
-              render={<Link href="/signup" />}
-            >
-              Get Started
-              <ArrowRight data-icon="inline-end" />
-            </Button>
-          </Show>
+            Get Started
+            <ArrowRight data-icon="inline-end" />
+          </Button>
           <Button size="lg" variant="outline" className="gap-1.5" onClick={scrollToDemo}>
             <Play data-icon="inline-start" className="fill-current" />
             Watch Demo

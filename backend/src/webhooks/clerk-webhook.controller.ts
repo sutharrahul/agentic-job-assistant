@@ -84,11 +84,15 @@ export class ClerkWebhookController {
   // Clerk sends every address the user has; the primary one is singled
   // out by id. Falling back to the first address keeps provisioning
   // working for OAuth sign-ups that arrive without a primary set yet.
-  private primaryEmail(event: ClerkUserEvent): string {
+  //
+  // Returns undefined rather than '' when there's nothing usable, so
+  // UsersService can resolve it from Clerk instead of writing a blank
+  // that would collide with User.email's unique index.
+  private primaryEmail(event: ClerkUserEvent): string | undefined {
     const addresses = event.data.email_addresses ?? [];
     const primary = addresses.find(
       (a) => a.id === event.data.primary_email_address_id,
     );
-    return primary?.email_address ?? addresses[0]?.email_address ?? '';
+    return primary?.email_address ?? addresses[0]?.email_address;
   }
 }

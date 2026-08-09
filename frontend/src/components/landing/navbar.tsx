@@ -14,7 +14,6 @@ import {
   SheetTitle,
   SheetClose,
 } from "@/components/ui/sheet";
-import { Show } from "@clerk/nextjs";
 
 const NAV_LINKS = [
   { label: "Features", href: "#features" },
@@ -66,29 +65,26 @@ export function Navbar() {
 
         <div className="flex items-center gap-2">
           <ModeToggle />
-          {/* Show renders null while Clerk is still loading, so these
-              swap in once the session is known rather than flashing the
-              wrong pair. */}
+          {/* Rendered unconditionally, NOT wrapped in Clerk's <Show>.
+              <Show> returns null until Clerk has loaded in the browser,
+              and on the server auth is always "loading" — so wrapping
+              these shipped a landing page whose two primary calls to
+              action were missing from the HTML entirely until client JS
+              booted. Verified by curling the rendered page.
+
+              A signed-in visitor clicking these is harmless: Clerk sends
+              them straight on to the app via the fallback redirect. */}
           <div className="hidden items-center gap-2 md:flex">
-            <Show
-              when="signed-out"
-              fallback={
-                <Button nativeButton={false} render={<Link href="/dashboard" />}>
-                  Go to app
-                </Button>
-              }
+            <Button
+              variant="ghost"
+              nativeButton={false}
+              render={<Link href="/login" />}
             >
-              <Button
-                variant="ghost"
-                nativeButton={false}
-                render={<Link href="/login" />}
-              >
-                Log in
-              </Button>
-              <Button nativeButton={false} render={<Link href="/signup" />}>
-                Get Started
-              </Button>
-            </Show>
+              Log in
+            </Button>
+            <Button nativeButton={false} render={<Link href="/signup" />}>
+              Get Started
+            </Button>
           </div>
 
           <Sheet>

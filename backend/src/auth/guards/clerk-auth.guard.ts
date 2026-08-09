@@ -31,7 +31,17 @@ export interface ClerkJwtPayload {
 // per-request network call to Clerk once the keys are cached.
 @Injectable()
 export class ClerkAuthGuard implements CanActivate {
-  constructor(private readonly configService: ConfigService) {}
+  private readonly secretKey: string;
+
+  // Resolved once at construction, NOT per request inside the try below.
+  // getOrThrow throws when the key is missing, and inside that try the
+  // catch would have turned it into "401 Invalid or expired token" — so a
+  // forgotten CLERK_SECRET_KEY on the host would look like a healthy app
+  // rejecting every valid token, with nothing in the logs to say why.
+  // Here it fails at boot instead, which is the loud, obvious failure.
+  constructor(configService: ConfigService) {
+    this.secretKey = configService.getOrThrow<string>('CLERK_SECRET_KEY');
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
@@ -42,9 +52,7 @@ export class ClerkAuthGuard implements CanActivate {
     }
 
     try {
-      const payload = await verifyToken(token, {
-        secretKey: this.configService.getOrThrow<string>('CLERK_SECRET_KEY'),
-      });
+      const payload = await verifyToken(token, { secretKey: this.secretKey });
 
       // Stash the identity on the request so handlers can read it via
       // @CurrentUser() instead of re-verifying. See current-user.decorator.ts.
