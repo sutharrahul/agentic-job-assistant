@@ -34,12 +34,19 @@ class Settings(BaseSettings):
 
     # IMPORTANT when picking a model: three of this service's four
     # endpoints use with_structured_output(), so the model MUST support
-    # tool/function calling. Most of OpenRouter's free models do not, and
-    # a model without it fails resume parsing, fit analysis and interview
-    # prep while cover letters (plain text) still work — a confusing
-    # half-broken state. Check "supported_parameters" for "tools" at
-    # https://openrouter.ai/api/v1/models before changing this.
-    openrouter_chat_model: str = "nvidia/nemotron-3-super-120b-a12b:free"
+    # tool/function calling — LangChain implements structured output over
+    # function calling for OpenAI-compatible providers. Many of
+    # OpenRouter's free models do not, and one without it fails resume
+    # parsing, fit analysis and interview prep while cover letters (plain
+    # text) still work — a confusing half-broken state that reads as a bug
+    # in our code rather than a bad model choice. Check that
+    # "supported_parameters" contains "tools" before changing this:
+    #   curl -s https://openrouter.ai/api/v1/models
+    #
+    # This default is verified to advertise tools. Note it advertises
+    # response_format but NOT structured_outputs, so with_structured_output
+    # must stay on its function-calling path rather than json_schema.
+    openrouter_chat_model: str = "google/gemma-4-31b-it:free"
 
     # Ollama config — only used when llm_provider="ollama". Defaults
     # assume `ollama serve` running locally with these models already
