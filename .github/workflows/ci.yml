@@ -1,0 +1,61 @@
+name: CI
+
+# On push as well as pull_request so a branch is already known-green
+# before a PR is opened, and main can't silently regress after a merge.
+on: [push, pull_request]
+
+# The two Node services are independent, so they run as separate jobs
+# and fail independently — a broken frontend build shouldn't hide a
+# passing backend test run, or vice versa. The Python ai-service has no
+# test suite yet and is deliberately left out.
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      # 22 matches engines.node in package.json — a CI runner on a
+      # different major would test something nobody deploys.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      # generated/ is gitignored (Prisma's client is platform-specific
+      # binaries), so a fresh checkout has no ../../generated/prisma for
+      # PrismaService to import — both the build and the tests fail on the
+      # missing module without this. It needs no DATABASE_URL: generate
+      # only reads the schema, it never connects.
+      - run: npx prisma generate
+
+      - run: npm run build
+
+      - run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+
+      # No Clerk keys are set here on purpose: every route that reads one
+      # is server-rendered on demand, so the publishable key is never
+      # evaluated during the build. Confirmed by building with the env
+      # file removed — add keys here only if that stops being true.
+      - run: npm run build
