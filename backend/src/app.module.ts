@@ -14,7 +14,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 @Module({
   imports: [
     // isGlobal: true means every module can inject ConfigService (used
-    // for reading env vars like SUPABASE_JWT_SECRET, AI_SERVICE_URL)
+    // for reading env vars like CLERK_SECRET_KEY, AI_SERVICE_URL)
     // without importing ConfigModule itself — same idea as PrismaModule
     // being @Global(), just for a different Nest module.
     ConfigModule.forRoot({ isGlobal: true }),

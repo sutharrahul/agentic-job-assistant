@@ -31,17 +31,21 @@ Candidate resume (structured):
 """
 
 
-# Note: this endpoint has no idea Redis exists. Caching lives one layer
-# up, in NestJS's OrchestrationService — it checks Redis *before* deciding
-# to call this endpoint at all. That keeps this service stateless (its one
-# job) and keeps the caching decision next to the code that owns "should
-# we even make this network call."
+# Note: this endpoint has no idea whether its result gets cached, and
+# that's deliberate — caching belongs one layer up, in NestJS's
+# OrchestrationService, next to the code that owns "should we even make
+# this network call." Keeping the decision there keeps this service
+# stateless, which is its one job.
+#
+# No cache exists yet, though: see the TODO in orchestration.service.ts.
+# This is the one AI call worth caching, because temperature=0 means the
+# same resume and job description should always score the same.
 @router.post("/analyze-fit", response_model=AnalyzeFitResponse)
 async def analyze_fit(payload: AnalyzeFitRequest) -> AnalyzeFitResponse:
     # temperature=0: scoring is a judgment task, but we want the SAME
     # resume + JD pair to score the same on every call — a fit score
     # that jumps around between identical requests reads as a bug to the
-    # user (and would defeat the Redis cache upstream).
+    # user (and would defeat the cache described above).
     model = get_chat_model(temperature=0)
 
     # Same pattern as resume extraction (services/resume_extraction.py):

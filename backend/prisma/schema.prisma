@@ -27,12 +27,15 @@ enum ResumeStatus {
   FAILED
 }
 
-// User.id has NO @default(uuid()) — on purpose. Supabase Auth already
-// generates a UUID for every signed-up user (the JWT's `sub` claim).
-// This id must be set to THAT SAME uuid when the row is created, so a
-// user's Prisma row and their Supabase Auth identity are always the same
-// id. If Prisma generated its own random id here, there'd be no way to
-// go from "the JWT says this user" to "this row in our database."
+// User.id has NO @default(uuid()) — on purpose. Clerk already assigns
+// every signed-up user an id (the JWT's `sub` claim, e.g. "user_2abc…").
+// This id must be set to THAT SAME value when the row is created, so a
+// user's Prisma row and their Clerk identity are always the same id. If
+// Prisma generated its own random id here, there'd be no way to go from
+// "the JWT says this user" to "this row in our database."
+//
+// It's a String rather than a Uuid for the same reason: the value comes
+// from Clerk, and Clerk's ids are prefixed strings, not UUIDs.
 model User {
   id           String        @id
   email        String        @unique

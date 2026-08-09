@@ -1,14 +1,20 @@
 # WALKTHROUGH
 
-A guide to ApplyGraph's architecture — written so you can explain your own
-codebase in an interview without having to re-derive *why* it's built this way.
+A guide to the Agentic Job Assistant's architecture — written so you can
+explain your own codebase in an interview without having to re-derive *why*
+it's built this way.
 
 > **Read this for the *reasoning*, not the status.** This document explains
-> why the system is shaped the way it is — that part still holds. Its ✅ / 🚧
-> progress markers are historical and no longer accurate: the resume upload,
-> Kanban board, and auth UI it describes as unbuilt have since been built,
-> and the empty LangGraph stub it describes has been deleted rather than
-> finished.
+> why the system is shaped the way it is — that part still holds. The ✅ / 🚧
+> progress markers it used to carry have been removed: everything they marked
+> as unbuilt (resume upload, Kanban board, auth UI) has since been built, so
+> §2 now states status in prose and calls out the one step that genuinely
+> isn't built.
+>
+> Two things changed after most of this was written, and both are corrected
+> in place below: **auth moved from Supabase Auth to Clerk**, and the
+> four-node LangGraph pipeline this used to describe was never built — the
+> real graph is the two-node interview-prep one in §3.
 >
 > **[README.md](../README.md) is authoritative for what currently exists.**
 
@@ -29,26 +35,32 @@ NestJS (backend/)            — the only service with a database connection
 FastAPI (ai-service/)        — stateless: no DB, no user accounts, just AI work
   │
   ▼
-Gemini API (via LangChain/LangGraph)
+An LLM provider (via LangChain/LangGraph) — Ollama, Gemini or OpenRouter,
+                                            picked by the LLM_PROVIDER env var
 
-Supporting services (both reachable from NestJS or FastAPI, not from the browser):
+Supporting services (reachable from NestJS, not from the browser):
   Supabase Postgres  — the actual database (via Prisma, from NestJS)
   Supabase Storage   — where uploaded resume files live
-  Supabase Auth      — issues the JWT every request carries
-  Redis (Upstash)    — cache + rate limiting
+  Clerk              — issues the JWT every request carries
 ```
+
+> Redis appeared in this diagram for a long time as "cache + rate limiting".
+> It was never built. Rate limiting is real but in-memory
+> (`ThrottlerModule` in `app.module.ts`), and fit-analysis caching is still
+> a TODO in `orchestration.service.ts`.
 
 **Why three services instead of one?** Each one has a genuinely different
 job and a different *failure mode*:
 
 - **Next.js** — the only thing that runs in the user's browser. Its whole
-  job is UI. It should never hold a database credential or a Gemini API
-  key, because anything shipped to the browser is visible to the user.
+  job is UI. It should never hold a database credential or an LLM
+  provider API key, because anything shipped to the browser is visible
+  to the user.
 - **NestJS** — the "trusted" backend. It's the only service allowed to talk
   to Postgres, and the only one that verifies *who* is making a request. It
   owns all business rules ("can this user see this application?").
 - **FastAPI** — deliberately **stateless**: no database access, no idea
-  what a "user" is. It receives data, calls Gemini, returns data. That
+  what a "user" is. It receives data, calls the LLM, returns data. That
   narrow job is exactly what Python's AI ecosystem (LangChain, LangGraph)
   is built for, so it's a separate service in Python rather than trying to
   do LLM orchestration from Node.
@@ -64,121 +76,173 @@ and exactly one place that decides "is this request allowed."
 
 ## 2. One request, end to end: resume upload → fit score → cover letter → Kanban
 
-This traces the flow the app is *designed* for. Each step names the real
-file it lives in, and says ✅ (exists) or 🚧 (stubbed / TODO) so you know
-what's actually running right now vs. what's planned.
+This traces the flow end to end, and each step names the real file it
+lives in. Everything below is built and running **except step 8** (the
+Redis cache in front of fit analysis), which is flagged where it appears.
 
-1. **User logs in** (🚧 UI not built) — Supabase Auth issues a JWT, stored
-   in the browser by the Supabase client SDK
-   (`frontend/src/lib/supabase/client.ts`).
+1. **User logs in** — Clerk issues a session JWT and manages it in the
+   browser (`@clerk/nextjs`; the sign-in UI lives at
+   `frontend/src/app/(auth)/login/`).
 
-2. **User uploads a resume** (🚧 UI + logic not built) — the browser sends
-   the file via `api.post('/resumes', ...)` using the shared axios
-   instance (`frontend/src/lib/axios.ts` ✅), whose interceptor attaches
-   `Authorization: Bearer <jwt>` automatically.
+2. **User uploads a resume** — the browser sends the file via
+   `api.post('/resumes', ...)` using the shared axios instance
+   (`frontend/src/lib/axios.ts`), whose interceptor calls Clerk's
+   `getToken()` and attaches `Authorization: Bearer <jwt>` automatically.
 
 3. **NestJS receives `POST /resumes`** — `ResumesController.upload()`
-   (`backend/src/resumes/resumes.controller.ts` ✅ routing, 🚧 body) is
-   guarded by `SupabaseAuthGuard`, which verifies the JWT's signature
-   against `SUPABASE_JWT_SECRET` and attaches the decoded user to the
-   request (`backend/src/auth/guards/supabase-auth.guard.ts` ✅).
+   (`backend/src/resumes/resumes.controller.ts`) is guarded by
+   `ClerkAuthGuard`, which verifies the JWT with `@clerk/backend`'s
+   `verifyToken` and attaches the decoded payload to the request
+   (`backend/src/auth/guards/clerk-auth.guard.ts`).
 
-4. **NestJS stores the raw file** (🚧) — uploads it to Supabase Storage,
-   gets back a path/URL.
+4. **NestJS stores the raw file** — uploads it to Supabase Storage under
+   a `userId/`-prefixed path (`backend/src/supabase/supabase.service.ts`)
+   and creates the `Resume` row with `status: PROCESSING` *before*
+   parsing starts, so a failed parse leaves a `FAILED` record rather than
+   the upload silently vanishing.
 
-5. **NestJS asks FastAPI to parse it** (🚧, but the plumbing is ✅) — via
+5. **NestJS asks FastAPI to parse it** — via
    `OrchestrationService.parseResume()`
-   (`backend/src/orchestration/orchestration.service.ts` ✅), which POSTs
-   to FastAPI's `/parse-resume` (`ai-service/app/routers/resume.py` ✅
-   route, 🚧 body). FastAPI fetches the file, extracts text, and (once
-   built) runs LangGraph's `parse_resume` node to pull out structured
-   data (skills, experience).
+   (`backend/src/orchestration/orchestration.service.ts`), which POSTs a
+   short-lived signed URL to FastAPI's `/parse-resume`
+   (`ai-service/app/routers/resume.py`). FastAPI downloads the file,
+   extracts the text (`app/services/text_extraction.py`), and calls
+   `extract_resume_data()` (`app/services/resume_extraction.py`) — a
+   single `temperature=0` call with
+   `with_structured_output(ParsedResumeData)`. **Not a LangGraph node.**
+   Earlier drafts of this document promised a `parse_resume` node; that
+   graph never existed and isn't planned — extraction is one step, so a
+   graph would add ceremony and nothing else. See §3.
 
-6. **NestJS saves the parsed resume** (🚧) via `PrismaService`
-   (`backend/src/prisma/prisma.service.ts` ✅) into the `Resume` table
-   (`backend/prisma/schema.prisma` ✅).
+6. **NestJS saves the parsed resume** via `PrismaService`
+   (`backend/src/prisma/prisma.service.ts`) into the `Resume` table
+   (`backend/prisma/schema.prisma`), moving the row to `PARSED`. The user
+   reviews and edits the extracted fields, and saving flips it to
+   `CONFIRMED` — the status every AI action below requires, because
+   parsed-but-unreviewed data may still contain extraction errors.
 
-7. **User pastes a job description and requests a fit score** (🚧 UI) —
+7. **User pastes a job description and creates an application** —
    `POST /applications`, handled by `ApplicationsController.create()`
-   (`backend/src/applications/applications.controller.ts` ✅ routing, 🚧
-   body).
+   (`backend/src/applications/applications.controller.ts`), from the form
+   at `frontend/src/app/(dashboard)/applications/new/`. Scoring the fit
+   is a separate explicit action: `POST /applications/:id/analyze-fit`.
 
-8. **NestJS checks Redis first** (🚧 — not built yet, but this is *where*
-   it belongs): before calling FastAPI's `/analyze-fit`, `Orchestration
-   Service.analyzeFit()` should check whether this exact resume+job pair
-   was scored before. If yes, return the cached score — skip the Gemini
-   call entirely. If no, call FastAPI, then write the result to Redis.
+8. **NestJS would check Redis first** — **this is the one step here that
+   is not built**, but this is *where* it belongs: before calling
+   FastAPI's `/analyze-fit`, `OrchestrationService.analyzeFit()` should
+   check whether this exact resume+job pair was scored before. If yes,
+   return the cached score — skip the LLM call entirely. If no, call
+   FastAPI, then write the result to Redis. Today it always calls
+   FastAPI; the cache lookup is still a `TODO` in
+   `orchestration.service.ts`.
 
-9. **FastAPI scores the fit** (🚧) — `/analyze-fit`
-   (`ai-service/app/routers/fit.py` ✅ route) runs the `analyze_fit`
-   LangGraph node: compares `parsed_resume` against `parsed_job` and
-   returns a `fit_score` + `skill_gaps`.
+9. **FastAPI scores the fit** — `/analyze-fit`
+   (`ai-service/app/routers/fit.py`) is a single `temperature=0` LLM call
+   with `with_structured_output(AnalyzeFitResponse)`. Not a LangGraph
+   node: it's one step, so a graph would add ceremony and nothing else.
+   Returns `fit_score`, `matched_skills`, `missing_skills`, `suggestions`.
 
-10. **NestJS generates a cover letter draft** (🚧) — calls FastAPI's
-    `/generate-cover-letter` (`ai-service/app/routers/cover_letter.py` ✅
-    route). This is the one step that **pauses for a human** instead of
-    returning a finished answer — see §3 and §4 for why.
+10. **NestJS generates a cover letter draft** — calls FastAPI's
+    `/generate-cover-letter` (`ai-service/app/routers/cover_letter.py`),
+    a single `temperature=0.7` call returning plain text. NestJS stores
+    it with `coverLetterApproved: false` — this is the step that waits
+    for a human, see §4 for why and for how that wait is implemented.
 
-11. **User reviews and approves/edits the draft** (🚧 UI) — only after
-    explicit approval does the cover letter get saved as final.
+11. **User reviews and approves/edits the draft** — the draft is already
+    persisted (step 10 wrote it) but stays unapproved until an explicit
+    click. "Approve" sends the possibly-edited text *and*
+    `coverLetterApproved: true` in one PATCH
+    (`frontend/src/components/applications/cover-letter-card.tsx`).
+    Be precise about the edit case, because it's easy to get backwards:
+    typing in the textarea sends **no** request. The card keeps a local
+    `hasLocalEdits` flag and renders
+    `approved = app.coverLetterApproved && !hasLocalEdits`, so an edit
+    invalidates the approval *in the UI* until the user approves again.
+    The stored flag only goes back to `false` on **regeneration**, which
+    `ApplicationsService.generateCoverLetter()` writes as part of the
+    same update.
 
-12. **NestJS saves the `Application` row** (🚧) with `status: APPLIED`,
-    the fit score, skill gaps, and approved cover letter, via
-    `ApplicationsService` (`backend/src/applications/applications.service.ts` ✅
-    skeleton).
+12. **The `Application` row carries every result** — it was created in
+    step 7 with `status: APPLIED` (the schema default), and each AI
+    action updates it in place: fit score + skill gaps, cover letter +
+    tone + approval flag, interview prep. All of it goes through
+    `ApplicationsService`
+    (`backend/src/applications/applications.service.ts`).
 
-13. **User drags the card on the Kanban board** (🚧 UI) — calls
-    `PATCH /applications/:id/status`
-    (`ApplicationsController.updateStatus()` ✅), which updates the
-    `status` enum field directly (`APPLIED → INTERVIEW → OFFER/REJECTED`).
+13. **User drags the card on the Kanban board**
+    (`frontend/src/components/applications/kanban-board.tsx`) — it moves
+    the card optimistically, then calls
+    `api.patch(`/applications/${id}`, { status })` via
+    `updateApplication()` (`frontend/src/lib/api/applications.ts`) and
+    reverts if the request fails. On the server that's `@Patch(':id')` →
+    `ApplicationsController.update()`. **There is no dedicated status
+    route:** one PATCH covers status, notes and the cover-letter fields,
+    and `UpdateApplicationDto` decides what's allowed — every field is
+    optional, the global `ValidationPipe` whitelist strips anything else,
+    and `@IsEnum(ApplicationStatus)` turns an invalid status into a clean
+    400 before it ever reaches Prisma
+    (`APPLIED → INTERVIEW → OFFER/REJECTED`).
 
 ---
 
 ## 3. The LangGraph pipeline, node by node
 
-Files: `ai-service/app/graph/state.py`, `ai-service/app/graph/build.py`
-(both ✅ exist as scaffolding; the nodes themselves are 🚧).
+File: `ai-service/app/graph/interview_prep.py`.
+
+> **Correction.** Earlier drafts of this document described a four-node
+> `parse_resume → parse_job → analyze_fit → generate_cover_letter` graph
+> with a human-approval `interrupt` in the middle, built on
+> `graph/state.py` and `graph/build.py`. **That graph was never built.**
+> Those two files only ever contained an empty `StateGraph`, and they have
+> since been deleted. Fit analysis and cover-letter generation are single
+> LLM calls in their own routers, not graph nodes — a graph would have
+> bought nothing, because neither has more than one step.
+>
+> Interview prep is the one feature with a genuine multi-step shape, so
+> it's the one place LangGraph earns its keep. That is the graph below.
 
 Think of LangGraph as a flowchart where each box is a plain Python
-function, and one shared object (`JobAssistantState`, a dict) gets passed
-from box to box, with each box adding a few more fields to it.
+function, and one shared object (`InterviewPrepState`, a `TypedDict`) is
+passed from box to box, each box adding the fields it computed.
 
 ```
-resume_text ──► [parse_resume] ──► parsed_resume ─┐
-                                                    ├──► [analyze_fit] ──► fit_score, skill_gaps ─┐
-job_description ──► [parse_job] ──► parsed_job ────┘                                             │
-                                                                                                    ▼
-                                                                          [generate_cover_letter] ──► cover_letter (DRAFT)
-                                                                                     │
-                                                                          ⏸ interrupt: wait for human approval
-                                                                                     │
-                                                                                     ▼
-                                                                              cover_letter (FINAL)
+parsed_resume ─┐
+parsed_job     ├──► [derive_focus_areas] ──► focus_areas, gaps_to_prepare
+fit_analysis? ─┘              │
+                              ▼
+                     [generate_questions] ──► technical_questions,
+                                              behavioral_questions
 ```
 
-- **`parse_resume`** — takes the raw resume text, asks Gemini to pull out
-  structured data (skills, years of experience, past roles). Fills in
-  `parsed_resume`.
-- **`parse_job`** — same idea for the job description: extracts a title
-  and a list of required skills. Fills in `parsed_job`.
-- **`analyze_fit`** — takes both parsed structures (no LLM call
-  necessarily required here — could be a straightforward skill-overlap
-  calculation, or Gemini-assisted). Fills in `fit_score` and
-  `skill_gaps`.
-- **`generate_cover_letter`** — the only node that produces
-  user-facing prose. Takes everything gathered so far and asks Gemini to
-  draft a tailored cover letter. Fills in `cover_letter`.
-- **The interrupt** — LangGraph supports pausing a running graph mid-way
-  and resuming it later (possibly with human-edited input). We use this
-  between "draft written" and "cover letter considered final" — see §4
-  for the reasoning.
+- **`derive_focus_areas`** — reads the job, the resume, and (optionally)
+  an earlier fit analysis, and picks the 3–5 themes the interview will
+  most likely centre on, plus the gaps worth studying. Runs at
+  `temperature=0`: it's an analysis step, so the same inputs should give
+  the same answer.
+- **`generate_questions`** — reads `focus_areas`, the field the first node
+  just wrote, and writes technical and behavioural questions with talking
+  points grounded in the candidate's actual projects. Runs at
+  `temperature=0.4`, so "Regenerate" rewords rather than repeats.
 
-`build_graph()` currently returns an empty `StateGraph` — no nodes added,
-no edges wired, not compiled. Building it out means: write each node as a
-function `(state: JobAssistantState) -> dict`, call
-`graph.add_node("parse_resume", parse_resume_fn)` for each, wire order
-with `graph.add_edge(...)`, then `graph.compile()` to get something
-runnable.
+**Why two nodes instead of one prompt**, which is the question to expect:
+
+1. Small models handle "work out what matters, *then* write questions
+   about it" far better as two focused calls than as one mega-prompt.
+   This was developed against `gemma3:4b` locally, where the difference
+   was obvious.
+2. `focus_areas` is a visible intermediate artifact. When the questions
+   come out generic, you can see whether node 1 picked bad themes or node
+   2 wrote badly about good ones. One prompt gives you no such seam.
+3. The handoff between the nodes *is* the state passing — which is the
+   thing LangGraph is for. A single call wouldn't need a graph at all.
+
+Each node returns only the fields it computed; LangGraph merges that into
+the shared state before the next node runs. The graph is compiled once at
+import (`interview_prep_graph`) — compilation wires it up without making
+any LLM calls, and the compiled object is stateless, so it's safe to
+share across requests since every `ainvoke` gets its own state dict.
+
+**No checkpointer, and therefore no `interrupt`.** See §4.
 
 ---
 
@@ -189,7 +253,9 @@ Because they have fundamentally different jobs and trust levels. NestJS
 owns authentication, authorization, and the database — it's the
 "backend of record." FastAPI is a stateless AI worker with no idea what
 a user or a database row is; it just transforms input into output via
-Gemini. Splitting them means the AI service can be scaled, redeployed, or
+whichever LLM provider is configured (Ollama, Gemini or OpenRouter — one
+env var, `app/core/llm.py` is the only file that knows the difference).
+Splitting them means the AI service can be scaled, redeployed, or
 even swapped for a different LLM stack without touching auth or data
 logic, and a bug in prompt engineering can't accidentally leak a SQL
 credential.
@@ -197,40 +263,59 @@ credential.
 **"Why not just call FastAPI from Next.js directly?"**
 Then FastAPI would need to authenticate users itself, and there'd be two
 places enforcing "who can access what" instead of one. Centralizing that
-in NestJS means one guard (`SupabaseAuthGuard`), one place to check.
+in NestJS means one guard (`ClerkAuthGuard`), one place to check.
 
-**"Why Redis, and why cache specifically the fit score?"**
-Fit-score and cover-letter generation both cost a real Gemini API call —
-money and latency. Fit score is the one that's naturally
-**idempotent**: the same resume against the same job description should
-always produce the same score, so if a user refreshes the page or goes
-back to re-check an application, it's wasteful to recompute it. Redis
-also backs rate limiting — protecting the API from being hammered (by a
-bug or by abuse) with a shared, fast counter that survives across NestJS
-instances (an in-memory counter wouldn't, if you ever run more than one
-backend process).
+**"Why cache the fit score, and why only that one?"**
+Fit-score and cover-letter generation both cost a real LLM call — money
+and latency. Fit score is the one that's naturally **idempotent**: it
+runs at `temperature=0`, so the same resume against the same job
+description should always produce the same score, and recomputing it
+when a user refreshes or revisits an application is pure waste. A cover
+letter is the opposite: "Regenerate" is *supposed* to give a different
+draft, so caching it would break the feature.
+
+Be honest about status if asked: this is designed, not built. The cache
+lookup is a TODO in `OrchestrationService.analyzeFit()`, and rate-limit
+counters are currently in-memory, which means they reset on restart and
+aren't shared across instances. Both are the same one-line answer —
+Upstash Redis — which is why they're worth mentioning together.
 
 **"Why human-in-the-loop for the cover letter specifically, and not the
 other AI steps?"**
-A wrong fit score just means a slightly-off number the user can visually
-judge. A wrong or badly-written cover letter goes out to a real employer
-under the user's name — the cost of a bad AI output is much higher and
-much more embarrassing. So that's the one step LangGraph pauses on
-(`interrupt`) rather than returning a "final" answer straight from the
-model.
+A wrong fit score is a slightly-off number the user can judge at a
+glance. A badly-written cover letter goes to a real employer under the
+user's name — the cost of a bad output is far higher. So it's the one
+output that is never treated as final: FastAPI returns a *draft*, NestJS
+stores it with `coverLetterApproved: false`, and only an explicit click
+flips that flag. Editing the text afterwards invalidates the approval in
+the UI — the card tracks the edit locally and stops showing "Approved"
+until you approve again — and regenerating resets the stored flag to
+`false` server-side.
 
-**"How does NestJS verify a Supabase JWT without calling Supabase?"**
-Supabase signs every JWT with a secret (`SUPABASE_JWT_SECRET`) known to
-both Supabase and our backend. `jwt.verify(token, secret)` checks that
-signature locally, using the `jsonwebtoken` library — no network call,
-so it doesn't add latency and doesn't fail if Supabase's API happens to
-be down.
+Worth knowing the follow-up: **that approval is a database flag, not a
+LangGraph `interrupt`.** A durable interrupt needs a checkpointer so a
+paused graph survives a process restart — on a free tier that sleeps,
+"paused in memory" means "lost". A boolean gives the identical
+user-facing guarantee with none of that machinery, and the state has to
+live in Postgres regardless, since it's shown on the application page.
+
+**"How does NestJS verify a Clerk JWT?"**
+`verifyToken` from `@clerk/backend` checks the token's RS256 signature
+against Clerk's public JWKS. Clerk's SDK caches those keys, so the
+common path is a local verification with no network round-trip.
+
+One sharp edge worth mentioning: Clerk's default session token carries
+**no email claim**. It has to be added in the dashboard under
+Sessions → Customize session token, and without it every user provision
+falls back to an extra Clerk API call — see `UsersService.resolveEmail()`.
 
 **"Why does `User.id` in Prisma have no default?"**
-Because it isn't generated by our database — it's set to match the UUID
-Supabase Auth already assigned that user (the JWT's `sub` claim). If
-Prisma generated its own random id, there'd be no way to connect "the
-user this JWT belongs to" back to a row in our own `User` table.
+Because it isn't generated by our database — it's set to the id Clerk
+already assigned that user (the JWT's `sub` claim, e.g. `user_2abc…`).
+If Prisma generated its own random id, there'd be no way to connect "the
+user this JWT belongs to" back to a row in our own `User` table. It's a
+`String` rather than a UUID column for the same reason: the value's
+shape is Clerk's to decide, not ours.
 
 **"Why is `OrchestrationService` the only thing that calls FastAPI?"**
 So there's one place to add caching, retries, or error handling for AI
@@ -245,9 +330,11 @@ Specific lines where "why did you do it this way?" is a fair question,
 and the honest answer is "trade-off" or "not finished yet," not "best
 practice":
 
-- ~~**`updateStatus()` casts the status string with no validation.**~~
-  *Fixed* — `update-application.dto.ts` validates against the enum with
-  `class-validator` before it reaches Prisma.
+- ~~**The status PATCH casts the status string with no validation.**~~
+  *Fixed* — `update-application.dto.ts` validates against the real Prisma
+  enum with `class-validator` before it reaches Prisma. (Status changes
+  go through the single `@Patch(':id')` → `update()` handler; there has
+  never been a separate `updateStatus()` route.)
 
 - ~~**No file-type/size validation for resume uploads.**~~ *Fixed* —
   `resumes.controller.ts` enforces a 5MB cap and PDF/DOCX only, by magic
@@ -268,17 +355,17 @@ practice":
   same user-facing guarantee at this scope. Know the difference — it's a
   likely follow-up question.
 
-- **`backend/src/auth/guards/` — the `catch` block**
-  treats "signature invalid," "token expired," and "wrong secret
-  configured" identically (generic 401). Good for not leaking info to an
-  attacker, bad for debugging your own misconfiguration — if
-  `SUPABASE_JWT_SECRET` is wrong in `.env`, every request just says
-  "Invalid or expired token" with no hint why.
+- **`clerk-auth.guard.ts` — the `catch` block** treats "signature
+  invalid," "token expired," and "wrong secret configured" identically
+  (generic 401). Good for not leaking information to an attacker, bad for
+  debugging your own misconfiguration — if `CLERK_SECRET_KEY` is wrong in
+  `.env`, every request just says "Invalid or expired token" with no hint
+  why.
 
-- **`frontend/src/lib/axios.ts`** — the shared `api` instance reads the
-  session via the *browser* Supabase client, so it only works correctly
-  from Client Components. Using it inside a Server Component wouldn't
-  throw, but it would silently send no auth token.
+- **`frontend/src/lib/axios.ts`** — the shared `api` instance gets its
+  token from Clerk's `getToken()`, which is browser-only, so it works
+  only from Client Components. Using it inside a Server Component
+  wouldn't throw; it would silently send no auth token.
 
 - ~~**No rate limiting.**~~ *Fixed* — `@nestjs/throttler` now caps the
   quota-spending routes per authenticated user (`UserThrottlerGuard`
@@ -304,8 +391,11 @@ practice":
   isn't visible just from reading a feature module's imports. Fine at
   this size; worth knowing it's a trade-off, not a free lunch.
 
-- **The LangGraph pipeline doesn't exist yet** — `build_graph()` returns
-  an empty, uncompiled graph. If asked to "walk through the LangGraph
-  code," be upfront that the state shape and pipeline design are done,
-  but the nodes themselves are unwritten — that's a much more defensible
-  answer than pretending otherwise.
+- **The AI service is reachable from the internet.** The architecture
+  assumes it isn't — that's what makes "no auth on FastAPI" a reasonable
+  choice — but the free hosting tier has no private services, so it gets
+  a public URL. A shared `X-Service-Token` check
+  (`ai-service/app/core/security.py`) stands in for the network isolation
+  the design assumed. Worth raising yourself: noticing that your
+  deployment broke an architectural assumption is a better answer than
+  being asked about it.

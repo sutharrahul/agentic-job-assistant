@@ -1,4 +1,4 @@
-"""Interview-prep pipeline — the first real LangGraph in this service.
+"""Interview-prep pipeline — the only LangGraph in this service.
 
 Why a two-node graph instead of one big prompt:
 1. Small models (gemma3:4b in dev) handle "figure out what matters, THEN
@@ -8,9 +8,11 @@ Why a two-node graph instead of one big prompt:
    artifact — if the questions come out generic, you can check whether
    the problem was picking the wrong focus areas (node 1) or writing bad
    questions about the right ones (node 2).
-3. It's the same architecture the cover-letter pipeline will grow into
-   (draft -> tone-adjust -> regenerate), so this doubles as the working
-   reference for "how we do LangGraph here."
+3. The handoff between the two nodes IS state passing, which is the thing
+   LangGraph exists to do. Interview prep is the only feature here with a
+   genuinely multi-step shape — resume parsing, fit analysis and
+   cover-letter generation are each a single LLM call and live in their
+   own routers, where a graph would add ceremony and nothing else.
 """
 
 import json
@@ -23,12 +25,12 @@ from app.core.llm import get_chat_model
 from app.schemas.interview_prep import InterviewQuestion, QuestionSet
 
 
-# Node-to-node state for THIS pipeline only. Deliberately not reusing
-# graph/state.py's JobAssistantState: that one describes the future
-# full resume->cover-letter pipeline, and sharing state classes between
-# unrelated graphs couples them for no benefit — each graph should own
-# exactly the fields its nodes touch. (total=False: fields appear as
-# nodes fill them in.)
+# Node-to-node state for THIS pipeline only: exactly the fields these two
+# nodes read and write, and nothing else. Scoping it to one graph rather
+# than to a shared app-wide state type is deliberate — a catch-all state
+# class would couple unrelated graphs together, and you could no longer
+# tell from the type which fields a node can actually rely on being
+# there. (total=False: fields appear as nodes fill them in.)
 class InterviewPrepState(TypedDict, total=False):
     parsed_resume: dict
     parsed_job: dict
