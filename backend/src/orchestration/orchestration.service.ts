@@ -35,6 +35,19 @@ export class OrchestrationService {
     return this.configService.getOrThrow<string>('AI_SERVICE_URL');
   }
 
+  // Shared secret proving to the AI service that this request came from
+  // us. It exists because the free hosting tier gives that service a
+  // public URL instead of a private one — the reasoning lives in
+  // ai-service/app/core/security.py.
+  //
+  // get(), not getOrThrow(): the AI service treats a missing token as
+  // "unprotected" for local development, so the backend has to be able to
+  // run without one too. Both sides get it from render.yaml in deployment.
+  private get serviceHeaders(): Record<string, string> {
+    const token = this.configService.get<string>('AI_SERVICE_TOKEN');
+    return token ? { 'X-Service-Token': token } : {};
+  }
+
   // @nestjs/axios wraps plain axios in an RxJS Observable (a NestJS
   // convention borrowed from Angular). The rest of this codebase is
   // async/await, not RxJS streams, so firstValueFrom() takes the one
@@ -47,7 +60,9 @@ export class OrchestrationService {
   private async post<T>(path: string, payload: unknown): Promise<T> {
     try {
       const { data } = await firstValueFrom(
-        this.httpService.post<T>(`${this.baseUrl}${path}`, payload),
+        this.httpService.post<T>(`${this.baseUrl}${path}`, payload, {
+          headers: this.serviceHeaders,
+        }),
       );
       return data;
     } catch (error) {

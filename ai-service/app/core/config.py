@@ -18,6 +18,12 @@ class Settings(BaseSettings):
 
     llm_provider: Literal["ollama", "gemini", "openrouter"] = "ollama"
 
+    # Shared secret NestJS must present on every call — see core/security.py
+    # for why this exists at all. Optional: unset means "no check", which is
+    # what local development wants and what a public deployment must not
+    # have. Startup logs a warning when it's missing.
+    service_token: str | None = None
+
     # Only required when llm_provider="gemini" — see the validator below.
     # Not required at all for local Ollama-only development.
     gemini_api_key: str | None = None
