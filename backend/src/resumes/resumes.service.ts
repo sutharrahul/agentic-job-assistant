@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { SupabaseService } from '../supabase/supabase.service';
 import { OrchestrationService } from '../orchestration/orchestration.service';
+import { UsersService } from '../users/users.service';
 import { ConfirmResumeDto } from './dto/confirm-resume.dto';
 
 @Injectable()
@@ -14,6 +15,7 @@ export class ResumesService {
     private readonly prisma: PrismaService,
     private readonly supabaseService: SupabaseService,
     private readonly orchestrationService: OrchestrationService,
+    private readonly usersService: UsersService,
   ) {}
 
   findAllForUser(userId: string) {
@@ -33,10 +35,27 @@ export class ResumesService {
     return resume;
   }
 
-  async upload(userId: string, file: Express.Multer.File) {
+  async upload(userId: string, file: Express.Multer.File, email?: string) {
     // File type/size are validated by the controller's ParseFilePipe
     // before this runs — by magic number, not the client-supplied
     // mimetype — so a bad file never reaches Storage at all.
+
+    // The LAST line of defence for the webhook race. UserSync (frontend)
+    // and the Clerk webhook both normally provision this row well before
+    // anyone reaches this method, but "normally" isn't good enough here:
+    // this is the first write that carries a foreign key to User, and if
+    // the row is missing the upload fails AFTER the file is already in
+    // Storage — an orphaned object and an opaque 500, for a user whose
+    // very first action it was.
+    //
+    // upsertFromAuth is idempotent, so the normal case is one indexed
+    // write. Passing the JWT's email avoids a Clerk API round-trip —
+    // but only when the dashboard's session-token claim is configured
+    // (see clerk-auth.guard.ts, where that manual step is documented).
+    // If it isn't, resolveEmail falls back to a network call to Clerk on
+    // every upload, before the storage write. That's the cost of a
+    // missing dashboard setting, not of this line.
+    await this.usersService.upsertFromAuth(userId, email);
 
     // userId-prefixed path doubles as a per-user folder in the bucket —
     // makes it trivial to reason about "which files belong to this

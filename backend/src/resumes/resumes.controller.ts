@@ -68,7 +68,7 @@ export class ResumesController {
     file: Express.Multer.File,
     @CurrentUser() user: ClerkJwtPayload,
   ) {
-    return this.resumesService.upload(user.sub, file);
+    return this.resumesService.upload(user.sub, file, user.email);
   }
 
   @Patch(':id/confirm')
