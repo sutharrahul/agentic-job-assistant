@@ -62,6 +62,32 @@ def get_chat_model(temperature: float = 0) -> BaseChatModel:
     )
 
 
+def structured_output_kwargs() -> dict:
+    # with_structured_output() has no single safe default across providers
+    # — LangChain picks a method per model, not per provider, based on
+    # metadata the model advertises. That auto-pick is right for Ollama
+    # (native grammar-constrained decoding: json_schema mode really is
+    # enforced) and for Gemini (a real structured-output API: same). It is
+    # WRONG for OpenRouter's google/gemma-4-31b-it:free: the model reports
+    # response_format support, so LangChain picks method="json_schema",
+    # but the model doesn't actually enforce it — it answers in prose, and
+    # every one of resume parsing, fit analysis and interview prep 500s
+    # on a Pydantic ValidationError trying to parse that prose as JSON.
+    # Verified live: json_schema fails this way; method="function_calling"
+    # (tool-calling, which this model DOES support per its
+    # supported_parameters) succeeds.
+    #
+    # So this is scoped to openrouter only. Forcing function_calling for
+    # Ollama or Gemini too would trade a working, already-tuned path
+    # (see the schema-fields-required note in schemas/fit.py, written
+    # for Ollama's constrained decoding) for an untested one, for no
+    # benefit — the bug is specific to this one provider's json_schema
+    # support being unreliable, not to json_schema mode in general.
+    if settings.llm_provider == "openrouter":
+        return {"method": "function_calling"}
+    return {}
+
+
 def get_embeddings_model() -> Embeddings:
     if settings.llm_provider == "ollama":
         from langchain_ollama import OllamaEmbeddings

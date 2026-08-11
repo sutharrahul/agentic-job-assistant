@@ -21,7 +21,7 @@ from typing import TypedDict
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
 
-from app.core.llm import get_chat_model
+from app.core.llm import get_chat_model, structured_output_kwargs
 from app.schemas.interview_prep import InterviewQuestion, QuestionSet
 
 
@@ -99,7 +99,9 @@ Candidate resume (structured):
 async def derive_focus_areas(state: InterviewPrepState) -> InterviewPrepState:
     # temperature=0: analysis step — same focus areas for the same
     # inputs, for the same reason /analyze-fit is deterministic.
-    model = get_chat_model(temperature=0).with_structured_output(_FocusAreas)
+    model = get_chat_model(temperature=0).with_structured_output(
+        _FocusAreas, **structured_output_kwargs()
+    )
 
     fit_context = (
         "\nFit analysis (missing skills -> gaps_to_prepare):\n"
@@ -126,7 +128,9 @@ async def derive_focus_areas(state: InterviewPrepState) -> InterviewPrepState:
 async def generate_questions(state: InterviewPrepState) -> InterviewPrepState:
     # Mild temperature: question WORDING can vary between regenerations,
     # but grounding rules in the prompt keep content tied to the resume.
-    model = get_chat_model(temperature=0.4).with_structured_output(QuestionSet)
+    model = get_chat_model(temperature=0.4).with_structured_output(
+        QuestionSet, **structured_output_kwargs()
+    )
 
     job = state["parsed_job"]
     result = await model.ainvoke(

@@ -1,4 +1,4 @@
-from app.core.llm import get_chat_model
+from app.core.llm import get_chat_model, structured_output_kwargs
 from app.schemas.resume import ParsedResumeData
 
 _EXTRACTION_PROMPT = """You are extracting structured data from a resume.
@@ -39,10 +39,14 @@ async def extract_resume_data(resume_text: str) -> ParsedResumeData:
     # markdown fences or add stray commentary. This makes malformed
     # output a LangChain-level concern instead of ours. Both providers
     # implement this the same way from the caller's side, though the
-    # underlying mechanism differs (Gemini/Ollama tool-calling vs.
-    # Ollama's JSON-schema-constrained decoding for models that don't
-    # support tool-calling well).
-    structured_model = model.with_structured_output(ParsedResumeData)
+    # underlying mechanism differs per provider — including, as of
+    # structured_output_kwargs() in core/llm.py, one provider (OpenRouter)
+    # whose auto-picked mechanism turned out not to work and had to be
+    # overridden. This function still doesn't know which; that override
+    # lives in the one file that's allowed to know.
+    structured_model = model.with_structured_output(
+        ParsedResumeData, **structured_output_kwargs()
+    )
 
     result = await structured_model.ainvoke(
         _EXTRACTION_PROMPT.format(resume_text=resume_text)
