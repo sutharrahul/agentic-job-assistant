@@ -2,7 +2,7 @@ import json
 
 from fastapi import APIRouter
 
-from app.core.llm import get_chat_model, structured_output_kwargs
+from app.core.llm import get_chat_model, structured_output_kwargs, with_llm_retry
 from app.schemas.fit import AnalyzeFitRequest, AnalyzeFitResponse
 
 router = APIRouter(tags=["fit"])
@@ -55,8 +55,8 @@ async def analyze_fit(payload: AnalyzeFitRequest) -> AnalyzeFitResponse:
     # structured_output_kwargs() overrides the method LangChain would
     # otherwise auto-pick, but only for providers where that pick is
     # known to be unreliable — see its docstring in core/llm.py.
-    structured_model = model.with_structured_output(
-        AnalyzeFitResponse, **structured_output_kwargs()
+    structured_model = with_llm_retry(
+        model.with_structured_output(AnalyzeFitResponse, **structured_output_kwargs())
     )
 
     # json.dumps rather than str(): the model sees clean JSON instead of

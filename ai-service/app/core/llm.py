@@ -88,6 +88,41 @@ def structured_output_kwargs() -> dict:
     return {}
 
 
+def with_llm_retry(runnable):
+    """Wraps the FINAL runnable at a call site — after
+    with_structured_output(), not the bare chat model — with retry
+    and exponential backoff.
+
+    Scoped to OpenRouter only. Its free-tier shared pool 429s routinely
+    under real load: one concurrent structured-output call already needed
+    up to 8 attempts during testing, and resume extraction's three
+    genuinely concurrent calls (see resume_extraction.py) hit this much
+    harder than any single-call endpoint — reproduced live as an
+    immediate, unhandled 429 on a real upload. Ollama runs locally with
+    no rate limit, and Gemini hasn't shown this failure mode; retrying
+    there by default would just slow down surfacing a REAL bug during
+    local dev, for no benefit.
+
+    Retrying after with_structured_output() rather than wrapping the bare
+    model from get_chat_model(): with_structured_output() introspects the
+    concrete model instance (tool binding, provider-specific method
+    construction), and a generic RunnableRetry wrapper doesn't reliably
+    expose what that introspection expects. Retrying the fully-built
+    pipeline sidesteps that risk entirely.
+
+    Backoff is sized to fit inside the 120s ceiling both callers enforce
+    (NestJS's AI_REQUEST_TIMEOUT_MS, the frontend's axios timeout):
+    3/6/12/20s waits across up to 5 attempts is ~41s of worst-case
+    backoff, leaving real margin for the attempts' own latency.
+    """
+    if settings.llm_provider != "openrouter":
+        return runnable
+    return runnable.with_retry(
+        stop_after_attempt=5,
+        exponential_jitter_params={"initial": 3, "max": 20, "exp_base": 2},
+    )
+
+
 def get_embeddings_model() -> Embeddings:
     if settings.llm_provider == "ollama":
         from langchain_ollama import OllamaEmbeddings

@@ -2,7 +2,7 @@ import json
 
 from fastapi import APIRouter
 
-from app.core.llm import get_chat_model
+from app.core.llm import get_chat_model, with_llm_retry
 from app.schemas.cover_letter import (
     GenerateCoverLetterRequest,
     GenerateCoverLetterResponse,
@@ -77,8 +77,12 @@ async def generate_cover_letter(
 
     # No with_structured_output here: the output IS one plain text field,
     # so JSON wrapping adds a failure mode (small models sometimes mangle
-    # long strings inside JSON) without buying any structure.
-    result = await model.ainvoke(
+    # long strings inside JSON) without buying any structure. Nothing
+    # downstream needs to introspect the model instance the way
+    # with_structured_output's construction does, so retry-wrapping the
+    # bare model (rather than only ever the post-with_structured_output
+    # result, per with_llm_retry's docstring) is safe here.
+    result = await with_llm_retry(model).ainvoke(
         _COVER_LETTER_PROMPT.format(
             tone_instructions=_TONE_INSTRUCTIONS[payload.tone],
             job=json.dumps(payload.parsed_job, indent=2),
