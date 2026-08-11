@@ -2,28 +2,27 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Menu, Sparkles } from "lucide-react";
+import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
-import {
-  Sheet,
-  SheetTrigger,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetClose,
-} from "@/components/ui/sheet";
 
-const NAV_LINKS = [
-  { label: "Features", href: "#features" },
-  { label: "Workflow", href: "#workflow" },
-  { label: "FAQ", href: "#faq" },
-];
-
+// Deliberately no nav links (Features/Workflow/FAQ used to live here) —
+// this landing page's hero carries the primary conversion action itself
+// ("Build an application"), so the nav's only job is utility for a
+// returning user. Those sections are still reachable from the footer's
+// Product links, just not competing for attention up here.
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const router = useRouter();
+  // useAuth() rather than <Show>: a hook returns synchronously with
+  // isLoaded: false on the server and on the client's first render (the
+  // same value in both, so hydration matches), THEN updates via a normal
+  // re-render once Clerk resolves the real state client-side. <Show>
+  // rendered nothing at all while loading, which is what stripped these
+  // CTAs from the server HTML in the first place — this keeps that fix
+  // (the fallback below IS what's now in the initial HTML) while also
+  // no longer showing "Sign in" to someone who already is.
+  const { isLoaded, isSignedIn } = useAuth();
+  const showSignedIn = isLoaded && isSignedIn;
 
   useEffect(() => {
     function handleScroll() {
@@ -38,101 +37,30 @@ export function Navbar() {
     <header
       className={`sticky top-0 z-40 w-full border-b transition-all duration-300 ${
         scrolled
-          ? "h-14 border-border bg-background/80 backdrop-blur-md"
+          ? "h-14 border-border bg-background backdrop-blur-md"
           : "h-16 border-transparent bg-background/60 backdrop-blur-sm"
       }`}
     >
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 font-heading font-semibold">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="size-4" />
-          </span>
-          <span className="hidden sm:inline">Agentic Job Assistant</span>
-          <span className="sm:hidden">AJA</span>
+        <Link href="/" className="flex items-center gap-2 font-label text-sm font-bold">
+          <span className="size-2 shrink-0 rounded-full bg-purple" />
+          Agentic Job Assistant
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {NAV_LINKS.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="rounded-md px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          <span className="font-label hidden text-xs text-muted-foreground sm:inline">
+            A calmer way to apply
+          </span>
           <ModeToggle />
-          {/* Rendered unconditionally, NOT wrapped in Clerk's <Show>.
-              <Show> returns null until Clerk has loaded in the browser,
-              and on the server auth is always "loading" — so wrapping
-              these shipped a landing page whose two primary calls to
-              action were missing from the HTML entirely until client JS
-              booted. Verified by curling the rendered page.
-
-              A signed-in visitor clicking these is harmless: Clerk sends
-              them straight on to the app via the fallback redirect. */}
-          <div className="hidden items-center gap-2 md:flex">
-            <Button
-              variant="ghost"
-              nativeButton={false}
-              render={<Link href="/login" />}
-            >
-              Log in
+          {showSignedIn ? (
+            <Button nativeButton={false} render={<Link href="/dashboard" />}>
+              Dashboard
             </Button>
-            <Button nativeButton={false} render={<Link href="/signup" />}>
-              Get Started
+          ) : (
+            <Button nativeButton={false} render={<Link href="/login" />}>
+              Sign in
             </Button>
-          </div>
-
-          <Sheet>
-            <SheetTrigger
-              render={<Button variant="ghost" size="icon" className="md:hidden" />}
-            >
-              <Menu className="size-4" />
-              <span className="sr-only">Open menu</span>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-72">
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-              </SheetHeader>
-              <nav className="flex flex-col gap-1 px-4">
-                {NAV_LINKS.map((link) => (
-                  <SheetClose
-                    key={link.href}
-                    nativeButton={false}
-                    render={
-                      <a
-                        href={link.href}
-                        className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      />
-                    }
-                  >
-                    {link.label}
-                  </SheetClose>
-                ))}
-              </nav>
-              <div className="mt-auto flex flex-col gap-2 p-4">
-                <SheetClose
-                  render={
-                    <Button
-                      variant="outline"
-                      onClick={() => router.push("/login")}
-                    />
-                  }
-                >
-                  Log in
-                </SheetClose>
-                <SheetClose
-                  render={<Button onClick={() => router.push("/signup")} />}
-                >
-                  Get Started
-                </SheetClose>
-              </div>
-            </SheetContent>
-          </Sheet>
+          )}
         </div>
       </div>
     </header>

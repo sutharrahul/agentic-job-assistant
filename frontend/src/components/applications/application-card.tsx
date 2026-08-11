@@ -1,12 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useDraggable } from "@dnd-kit/core";
-import { Clock } from "lucide-react";
+import { CalendarDays, MoreHorizontal, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Application } from "@/lib/types/application";
-import { isStale } from "@/lib/api/applications";
+import { deleteApplication, isStale } from "@/lib/api/applications";
 import { cn } from "@/lib/utils";
 
 function formatDate(iso: string) {
@@ -16,79 +24,108 @@ function formatDate(iso: string) {
   });
 }
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
-// The one status-specific detail worth surfacing on the board (the rest
-// live on the detail page): where you applied, when the interview is,
-// what they offered, or where it fell through.
-function statusDetail(app: Application): string | null {
-  switch (app.status) {
-    case "APPLIED":
-      return app.appliedVia ? `via ${app.appliedVia}` : null;
-    case "INTERVIEW":
-      return app.interviewAt ? formatDateTime(app.interviewAt) : null;
-    case "OFFER":
-      return app.offeredCtc;
-    case "REJECTED":
-      return app.rejectionStage || app.rejectionReason;
+// The one per-stage "what's next" signal worth putting on the card face
+// (everything else lives on the detail page): a stale Applied card needs
+// a follow-up, an Interview card without a prep pack yet needs one
+// generated, and Offer/Rejected cards surface their real date instead —
+// three different real fields, not one fabricated status.
+function NextStep({ app }: { app: Application }) {
+  if (app.status === "APPLIED" && isStale(app)) {
+    return <Badge variant="warm">Follow up</Badge>;
   }
+  if (app.status === "INTERVIEW" && !app.interviewPrep) {
+    return <Badge variant="outline">Prep</Badge>;
+  }
+  if ((app.status === "OFFER" || app.status === "REJECTED") && app.deadline) {
+    return (
+      <span
+        className="flex items-center text-muted-foreground"
+        title={`Deadline ${formatDate(app.deadline)}`}
+      >
+        <CalendarDays className="size-3.5" />
+      </span>
+    );
+  }
+  return null;
 }
 
 // Pure presentation — used both inside the draggable wrapper below and as
 // the DragOverlay preview in kanban-board.tsx (the overlay must not carry
-// drag listeners of its own, hence the split).
+// drag listeners or a delete menu of its own, hence onDelete being
+// optional and the split between this and DraggableApplicationCard).
 export function ApplicationCardView({
   app,
   className,
+  onDelete,
 }: {
   app: Application;
   className?: string;
+  onDelete?: () => void;
 }) {
-  const detail = statusDetail(app);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function handleDelete(e: React.MouseEvent) {
+    // Stops the click from bubbling to both the draggable wrapper (which
+    // would otherwise treat this as the start of a drag gesture) and the
+    // surrounding <Link> (which would otherwise navigate to the detail
+    // page instead of deleting).
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Delete ${app.company} — ${app.jobTitle}?`)) return;
+    setIsDeleting(true);
+    try {
+      await deleteApplication(app.id);
+      onDelete?.();
+    } catch {
+      setIsDeleting(false);
+    }
+  }
 
   return (
     <Card
       className={cn(
-        "transition-all hover:-translate-y-0.5 hover:shadow-md",
+        "rounded-xl shadow-card transition-all hover:-translate-y-0.5 hover:shadow-card-hover",
+        isDeleting && "pointer-events-none opacity-50",
         className,
       )}
     >
-      <CardContent className="space-y-3">
-        <div className="flex items-start gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 font-heading text-base font-semibold text-primary dark:bg-primary/15">
-            {app.company[0]?.toUpperCase()}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-base font-medium">{app.company}</p>
-            <p className="truncate text-sm text-muted-foreground">
-              {app.jobTitle}
-            </p>
-            {detail && (
-              <p className="truncate text-xs text-muted-foreground/80">
-                {detail}
-              </p>
-            )}
-          </div>
+      <CardContent className="space-y-2.5">
+        <div className="flex items-start justify-between gap-2">
+          <p className="font-heading truncate font-semibold">{app.company}</p>
+          {onDelete && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="-mt-1 -mr-1 size-6 shrink-0 text-muted-foreground"
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  />
+                }
+              >
+                <MoreHorizontal className="size-4" />
+                <span className="sr-only">Card actions</span>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenuItem variant="destructive" onClick={handleDelete}>
+                  <Trash2 data-icon="inline-start" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <p className="truncate text-sm text-muted-foreground">{app.jobTitle}</p>
+        <div className="flex items-center gap-2">
           {app.fitScore !== null && (
-            <Badge variant="secondary">{Math.round(app.fitScore)}% fit</Badge>
+            <span className="font-label text-xs text-muted-foreground">
+              {Math.round(app.fitScore)} fit
+            </span>
           )}
-          {isStale(app) && (
-            <Badge variant="destructive">
-              <Clock data-icon="inline-start" />
-              Follow up
-            </Badge>
-          )}
-          <span className="ml-auto text-xs text-muted-foreground">
-            {formatDate(app.createdAt)}
+          <span className="ml-auto">
+            <NextStep app={app} />
           </span>
         </div>
       </CardContent>
@@ -96,7 +133,13 @@ export function ApplicationCardView({
   );
 }
 
-export function DraggableApplicationCard({ app }: { app: Application }) {
+export function DraggableApplicationCard({
+  app,
+  onDeleted,
+}: {
+  app: Application;
+  onDeleted: (id: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: app.id,
   });
@@ -104,7 +147,9 @@ export function DraggableApplicationCard({ app }: { app: Application }) {
   return (
     // The card is both a drag handle and a link. The board's sensors only
     // start a drag after 6px of movement (mouse) or a 250ms hold (touch),
-    // so a plain click/tap still falls through to the Link navigation.
+    // so a plain click/tap still falls through to the Link navigation —
+    // and the delete menu's own stopPropagation keeps IT from triggering
+    // either the drag or the navigation.
     <div
       ref={setNodeRef}
       {...listeners}
@@ -113,7 +158,7 @@ export function DraggableApplicationCard({ app }: { app: Application }) {
       style={{ touchAction: "manipulation" }}
     >
       <Link href={`/applications/${app.id}`} draggable={false}>
-        <ApplicationCardView app={app} />
+        <ApplicationCardView app={app} onDelete={() => onDeleted(app.id)} />
       </Link>
     </div>
   );

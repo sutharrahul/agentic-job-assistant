@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 import { GitHubIcon } from "@/components/landing/brand-icons";
 
 export const GITHUB_URL = "https://github.com/sutharrahul/agentic-job-assistant";
@@ -22,10 +21,8 @@ export function Footer() {
       <div className="mx-auto max-w-6xl">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-3 lg:grid-cols-5">
           <div className="col-span-2 flex flex-col gap-3 lg:col-span-2">
-            <Link href="/" className="flex items-center gap-2 font-heading font-semibold">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Sparkles className="size-4" />
-              </span>
+            <Link href="/" className="flex items-center gap-2 font-label text-sm font-bold">
+              <span className="size-2 shrink-0 rounded-full bg-purple" />
               Agentic Job Assistant
             </Link>
             <p className="max-w-xs text-sm text-muted-foreground">

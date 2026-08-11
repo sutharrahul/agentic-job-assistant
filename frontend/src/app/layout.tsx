@@ -1,21 +1,31 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Poppins } from "next/font/google";
+import { Inter, JetBrains_Mono, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 
-// Exposed as --font-sans, which globals.css maps to both the font-sans
-// and font-heading utilities. Poppins isn't a variable font, so each
-// weight used in the UI must be listed explicitly.
-const poppins = Poppins({
+// Design system, revised: Inter is the default body/UI face (--font-sans,
+// Tailwind's font-sans utility, what <html> gets unless overridden) —
+// headings, paragraphs, buttons, and form labels all read as clean
+// humanist sans. Space Mono is demoted from "the default everywhere" to
+// a deliberate label face: breadcrumbs, eyebrow text, stat captions, the
+// wordmark — exposed as --font-label / the font-label utility, applied
+// explicitly, not globally.
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceMono = Space_Mono({
+  variable: "--font-label",
+  subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
 });
 
@@ -42,7 +52,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
-        className={`${poppins.variable} ${geistMono.variable} h-full antialiased`}
+        className={`${spaceMono.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
         suppressHydrationWarning
       >
         <body className="flex min-h-full flex-col">

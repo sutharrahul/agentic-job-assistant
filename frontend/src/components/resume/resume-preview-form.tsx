@@ -13,8 +13,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagInput } from "@/components/tag-input";
+
+// Matches the nested-entry treatment used for Experience/Education/
+// Projects rows so they read as cards inside the "Parsed review" panel
+// instead of the old plain bordered boxes.
+const entryClassName = "space-y-3 rounded-2xl bg-background p-4 shadow-card";
 
 const emptyExperience: ExperienceEntry = {
   title: "",
@@ -81,39 +86,61 @@ export function ResumePreviewForm({
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Summary</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={data.summary ?? ""}
-            onChange={(e) => setData({ ...data, summary: e.target.value })}
-            placeholder="Professional summary"
-          />
-        </CardContent>
-      </Card>
+      <div className="space-y-3 rounded-2xl bg-card p-6 shadow-card">
+        <h2 className="font-heading text-base font-medium">Summary</h2>
+        <Textarea
+          value={data.summary ?? ""}
+          onChange={(e) => setData({ ...data, summary: e.target.value })}
+          placeholder="Professional summary"
+        />
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Skills</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <TagInput
-            value={data.skills}
-            onChange={(skills) => setData({ ...data, skills })}
-            placeholder="Add a skill and press Enter"
-          />
-        </CardContent>
-      </Card>
+      <div className="rounded-2xl bg-card p-6 shadow-card">
+        <h2 className="font-heading mb-4 text-base font-medium">
+          Parsed review
+        </h2>
+        <Tabs defaultValue="skills" className="gap-6">
+          <TabsList
+            variant="line"
+            className="h-auto w-fit gap-1 bg-transparent p-0"
+          >
+            <TabsTrigger
+              value="skills"
+              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
+            >
+              Skills
+            </TabsTrigger>
+            <TabsTrigger
+              value="experience"
+              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
+            >
+              Experience
+            </TabsTrigger>
+            <TabsTrigger
+              value="education"
+              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
+            >
+              Education
+            </TabsTrigger>
+            <TabsTrigger
+              value="projects"
+              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
+            >
+              Projects
+            </TabsTrigger>
+          </TabsList>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Experience</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <TabsContent value="skills">
+            <TagInput
+              value={data.skills}
+              onChange={(skills) => setData({ ...data, skills })}
+              placeholder="Add a skill and press Enter"
+            />
+          </TabsContent>
+
+          <TabsContent value="experience" className="space-y-4">
           {data.experience.map((entry, index) => (
-            <div key={index} className="space-y-2 rounded-md border p-4">
+            <div key={index} className={entryClassName}>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   placeholder="Title"
@@ -192,16 +219,11 @@ export function ResumePreviewForm({
           >
             Add experience
           </Button>
-        </CardContent>
-      </Card>
+          </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Education</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <TabsContent value="education" className="space-y-4">
           {data.education.map((entry, index) => (
-            <div key={index} className="space-y-2 rounded-md border p-4">
+            <div key={index} className={entryClassName}>
               <div className="grid grid-cols-2 gap-2">
                 <Input
                   placeholder="Degree"
@@ -271,16 +293,11 @@ export function ResumePreviewForm({
           >
             Add education
           </Button>
-        </CardContent>
-      </Card>
+          </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Projects</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <TabsContent value="projects" className="space-y-4">
           {data.projects.map((entry, index) => (
-            <div key={index} className="space-y-2 rounded-md border p-4">
+            <div key={index} className={entryClassName}>
               <Input
                 placeholder="Name"
                 value={entry.name}
@@ -333,8 +350,9 @@ export function ResumePreviewForm({
           >
             Add project
           </Button>
-        </CardContent>
-      </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button onClick={handleConfirm} disabled={isSaving} size="lg">

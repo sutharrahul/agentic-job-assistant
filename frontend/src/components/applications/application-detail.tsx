@@ -32,6 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PageHeading } from "@/components/layout/page-heading";
 import { FitAnalysisCard } from "@/components/applications/fit-analysis-card";
 import { StatusDetailsCard } from "@/components/applications/status-details-card";
 import { CoverLetterCard } from "@/components/applications/cover-letter-card";
@@ -80,9 +81,9 @@ export function ApplicationDetail({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <p className="p-4 text-sm text-muted-foreground sm:p-6 lg:p-8">
-        Loading application...
-      </p>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm text-muted-foreground">Loading application...</p>
+      </div>
     );
   }
 
@@ -135,39 +136,32 @@ export function ApplicationDetail({ id }: { id: string }) {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <Link
-        href="/applications"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to board
-      </Link>
+    <div>
+      {/* Breadcrumb + H1 row via the shared header — job title leads since
+          that's the thing being tracked; company moves into the crumb. */}
+      <PageHeading crumbs={["Application", app.company]} title={app.jobTitle} />
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 font-heading text-lg font-semibold text-primary dark:bg-primary/15">
-              {app.company[0]?.toUpperCase()}
-            </span>
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-heading text-2xl font-semibold tracking-tight break-words">
-                  {app.company}
-                </h1>
-                {isStale(app) && (
-                  <Badge variant="destructive">
-                    <Clock data-icon="inline-start" />
-                    Follow up
-                  </Badge>
-                )}
-              </div>
-              <p className="break-words text-muted-foreground">
-                {app.jobTitle}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <Link
+          href="/applications"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to board
+        </Link>
+
+        {/* Second header row: meta (location/dates/stale flag) on the
+            left, status + delete actions on the right. Status is styled as
+            the page's primary action — moving an application through the
+            tracker — so it gets the solid coral treatment. */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+            {isStale(app) && (
+              <Badge variant="destructive">
+                <Clock data-icon="inline-start" />
+                Follow up
+              </Badge>
+            )}
             {app.location && (
               <span className="inline-flex items-center gap-1">
                 <MapPin className="size-3.5" />
@@ -185,112 +179,115 @@ export function ApplicationDetail({ id }: { id: string }) {
               </span>
             )}
           </div>
-        </div>
 
-        <div className="flex shrink-0 items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" />}>
-              {STATUS_LABELS[app.status]}
-              <ChevronDown data-icon="inline-end" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {(Object.keys(STATUS_LABELS) as ApplicationStatus[]).map(
-                (status) => (
-                  <DropdownMenuItem
-                    key={status}
-                    onClick={() => handleStatusChange(status)}
+          <div className="flex shrink-0 items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button className="bg-purple text-white hover:bg-purple-dark" />
+                }
+              >
+                {STATUS_LABELS[app.status]}
+                <ChevronDown data-icon="inline-end" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(Object.keys(STATUS_LABELS) as ApplicationStatus[]).map(
+                  (status) => (
+                    <DropdownMenuItem
+                      key={status}
+                      onClick={() => handleStatusChange(status)}
+                    >
+                      {STATUS_LABELS[status]}
+                    </DropdownMenuItem>
+                  ),
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <DialogTrigger render={<Button variant="destructive" size="icon" />}>
+                <Trash2 />
+                <span className="sr-only">Delete application</span>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete this application?</DialogTitle>
+                  <DialogDescription>
+                    This removes {app.company} — {app.jobTitle}, along with its
+                    fit analysis, cover letter, and interview prep. This
+                    can&apos;t be undone.
+                  </DialogDescription>
+                </DialogHeader>
+                <DialogFooter>
+                  <DialogClose render={<Button variant="outline" />}>
+                    Cancel
+                  </DialogClose>
+                  <Button
+                    variant="destructive"
+                    onClick={handleDelete}
+                    disabled={isDeleting}
                   >
-                    {STATUS_LABELS[status]}
-                  </DropdownMenuItem>
-                ),
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <DialogTrigger render={<Button variant="destructive" size="icon" />}>
-              <Trash2 />
-              <span className="sr-only">Delete application</span>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Delete this application?</DialogTitle>
-                <DialogDescription>
-                  This removes {app.company} — {app.jobTitle}, along with its
-                  fit analysis, cover letter, and interview prep. This
-                  can&apos;t be undone.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <DialogClose render={<Button variant="outline" />}>
-                  Cancel
-                </DialogClose>
-                <Button
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                    {isDeleting ? "Deleting..." : "Delete"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* min-w-0 on every grid child: grid items refuse to shrink below
-            their content width by default, so one long unbroken line (a
-            URL in a job description, say) would otherwise push the whole
-            page into horizontal overflow. */}
-        <div className="min-w-0 space-y-4 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Job description</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="max-h-80 overflow-y-auto text-sm break-words whitespace-pre-wrap text-muted-foreground">
-                {app.jobDescription}
-              </p>
-            </CardContent>
-          </Card>
-
+        {/* Fit overview + cover letter draft, side by side and prominent —
+            the two things the reference design showcases up top. */}
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <FitAnalysisCard app={app} onUpdated={setApp} />
           <CoverLetterCard app={app} onUpdated={setApp} />
         </div>
 
-        <div className="min-w-0 space-y-4">
-          {/* Contextual per-status form — switches with the dropdown above. */}
-          <StatusDetailsCard app={app} onUpdated={setApp} />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* min-w-0 on every grid child: grid items refuse to shrink below
+              their content width by default, so one long unbroken line (a
+              URL in a job description, say) would otherwise push the whole
+              page into horizontal overflow. */}
+          <div className="min-w-0 lg:col-span-2">
+            <Card className="rounded-2xl shadow-card">
+              <CardHeader>
+                <CardTitle>Job description</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="max-h-80 overflow-y-auto text-sm break-words whitespace-pre-wrap text-muted-foreground">
+                  {app.jobDescription}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
 
-          <FitAnalysisCard app={app} onUpdated={setApp} />
+          <div className="min-w-0 space-y-4">
+            {/* Contextual per-status form — switches with the dropdown above. */}
+            <StatusDetailsCard app={app} onUpdated={setApp} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Notes</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Recruiter contacts, interview prep, next steps..."
-                rows={5}
-              />
-              <div className="flex items-center gap-3">
-                <Button size="sm" variant="outline" onClick={handleSaveNotes}>
-                  Save notes
-                </Button>
-                {notesSaved && (
-                  <span className="text-xs text-muted-foreground">Saved</span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+            <Card className="rounded-2xl shadow-card">
+              <CardHeader>
+                <CardTitle>Notes</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Recruiter contacts, interview prep, next steps..."
+                  rows={5}
+                />
+                <div className="flex items-center gap-3">
+                  <Button size="sm" variant="outline" onClick={handleSaveNotes}>
+                    Save notes
+                  </Button>
+                  {notesSaved && (
+                    <span className="text-xs text-muted-foreground">Saved</span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        {/* Full-width: prep packs are long-form reading, so they get the
-            whole row under the grid instead of squeezing into a column. */}
-        <div className="min-w-0 lg:col-span-3">
-          <InterviewPrepCard app={app} onUpdated={setApp} />
-        </div>
+        <InterviewPrepCard app={app} onUpdated={setApp} />
       </div>
     </div>
   );

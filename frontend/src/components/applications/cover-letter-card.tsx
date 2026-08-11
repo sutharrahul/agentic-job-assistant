@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, PenLine, RefreshCw } from "lucide-react";
+import { Check, Lock, PenLine, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Application, CoverLetterTone } from "@/lib/types/application";
 import { generateCoverLetter, updateApplication } from "@/lib/api/applications";
+import { cn } from "@/lib/utils";
 
 const TONES: { value: CoverLetterTone; label: string }[] = [
   { value: "FORMAL", label: "Formal" },
@@ -76,29 +76,33 @@ export function CoverLetterCard({
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl shadow-card">
       <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0">
-        <CardTitle>Cover letter</CardTitle>
-        {approved && (
-          <Badge variant="secondary">
-            <Check data-icon="inline-start" />
-            Approved
-          </Badge>
-        )}
+        <CardTitle>Cover letter draft</CardTitle>
+        {/* No real "last updated" timestamp exists on Application — this
+            is static copy, not a fabricated date. */}
+        <span className="font-label text-xs tracking-widest text-muted-foreground uppercase">
+          Draft
+        </span>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Tone:</span>
+          <span className="text-xs font-medium text-muted-foreground">Tone</span>
           {TONES.map(({ value, label }) => (
-            <Button
+            <button
               key={value}
-              size="sm"
-              variant={tone === value ? "secondary" : "outline"}
+              type="button"
               onClick={() => setTone(value)}
               disabled={isGenerating}
+              className={cn(
+                "rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:pointer-events-none disabled:opacity-50",
+                tone === value
+                  ? "border-purple text-purple"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
+              )}
             >
               {label}
-            </Button>
+            </button>
           ))}
         </div>
 
@@ -137,31 +141,51 @@ export function CoverLetterCard({
               }}
               rows={12}
               placeholder="Dear Hiring Manager, ..."
-              className="min-h-56 font-mono text-sm"
+              className="min-h-56 rounded-xl border-border p-4 font-mono text-sm"
               disabled={isGenerating}
             />
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                onClick={handleApprove}
-                disabled={
-                  isGenerating || isSaving || approved || !content.trim()
-                }
-              >
-                <Check data-icon="inline-start" />
-                {approved ? "Approved" : isSaving ? "Saving..." : "Approve letter"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleGenerate}
-                disabled={isGenerating}
-              >
-                <RefreshCw data-icon="inline-start" />
-                {isGenerating
-                  ? "Generating..."
-                  : content
-                    ? "Regenerate"
-                    : "Generate with AI"}
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span className="font-label flex items-center gap-1.5 text-xs tracking-widest text-muted-foreground uppercase">
+                {approved ? (
+                  <>
+                    <Check className="size-3.5" />
+                    Approved
+                  </>
+                ) : (
+                  <>
+                    <Lock className="size-3.5" />
+                    Not approved
+                  </>
+                )}
+              </span>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  onClick={handleApprove}
+                  disabled={
+                    isGenerating || isSaving || approved || !content.trim()
+                  }
+                  className="bg-purple text-white hover:bg-purple-dark"
+                >
+                  <Check data-icon="inline-start" />
+                  {approved
+                    ? "Approved"
+                    : isSaving
+                      ? "Saving..."
+                      : "Approve draft"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                >
+                  <RefreshCw data-icon="inline-start" />
+                  {isGenerating
+                    ? "Generating..."
+                    : content
+                      ? "Regenerate"
+                      : "Generate with AI"}
+                </Button>
+              </div>
             </div>
           </>
         )}

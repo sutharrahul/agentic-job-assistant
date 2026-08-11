@@ -1,19 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import {
-  Briefcase,
-  Clock,
-  FileText,
-  Plus,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PageHeading } from "@/components/layout/page-heading";
 import { Application, ApplicationStatus } from "@/lib/types/application";
 import { isStale, listApplications } from "@/lib/api/applications";
 
@@ -41,9 +35,52 @@ const STATUS_DOT_COLORS: Record<ApplicationStatus, string> = {
   REJECTED: "bg-rose-400",
 };
 
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+// Zero-pad single-digit stat numbers ("6" -> "06") to match the reference's
+// big-number treatment.
+function pad2(n: number): string {
+  return n < 10 ? `0${n}` : String(n);
+}
+
+function daysSince(iso: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / DAY_MS));
+}
+
+function countAddedInLastWeek(apps: Application[]): number {
+  return apps.filter((a) => Date.now() - new Date(a.createdAt).getTime() < 7 * DAY_MS)
+    .length;
+}
+
+// "Now" is external, mutable state from the client's clock — the server
+// can't know it, and the user's local timezone can disagree with the
+// server's, so the label is read via useSyncExternalStore (never during
+// render itself) with a null server snapshot instead of guessed client-side
+// and risking a hydration mismatch.
+function subscribeToNothing() {
+  return () => {};
+}
+
+function getTodayLabel(): string {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function getServerTodayLabel(): string | null {
+  return null;
+}
+
 export default function DashboardPage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const todayLabel = useSyncExternalStore(
+    subscribeToNothing,
+    getTodayLabel,
+    getServerTodayLabel,
+  );
 
   useEffect(() => {
     listApplications()
@@ -70,24 +107,45 @@ export default function DashboardPage() {
     count: apps.filter((a) => a.status === status).length,
   }));
 
-  const stats = [
-    { label: "Applications", value: String(apps.length), icon: Briefcase },
+  const interviewCount = apps.filter((a) => a.status === "INTERVIEW").length;
+  const newThisWeek = countAddedInLastWeek(apps);
+
+  const statCards = [
     {
-      label: "Interviews",
-      value: String(apps.filter((a) => a.status === "INTERVIEW").length),
-      icon: Users,
+      label: "Active applications",
+      value: pad2(apps.length),
+      caption:
+        newThisWeek > 0
+          ? `${newThisWeek} added this week`
+          : "No new activity this week",
     },
     {
-      label: "Offers",
-      value: String(apps.filter((a) => a.status === "OFFER").length),
-      icon: TrendingUp,
+      label: "Interview stage",
+      value: pad2(interviewCount),
+      caption: "Updated moments ago",
     },
     {
-      label: "Avg. fit score",
-      value: avgFit !== null ? `${avgFit}%` : "—",
-      icon: FileText,
+      label: "Average fit score",
+      value: avgFit !== null ? `${avgFit} / 100` : "— / 100",
+      caption:
+        avgFit !== null
+          ? `Across ${scored.length} scored application${scored.length === 1 ? "" : "s"}`
+          : "No applications scored yet",
+    },
+    {
+      label: "Follow-ups due",
+      value: pad2(staleApps.length),
+      caption:
+        staleApps.length > 0
+          ? "Applied 7+ days ago, no response"
+          : "All caught up",
     },
   ];
+
+  const encouragement =
+    staleApps.length > 0
+      ? `${staleApps.length} follow-up${staleApps.length > 1 ? "s" : ""} waiting on you.`
+      : "Nothing waiting on you.";
 
   // createdAt doubles as "applied at" — newest first.
   const recent = [...apps]
@@ -97,183 +155,160 @@ export default function DashboardPage() {
     )
     .slice(0, 5);
 
+  const topStale = staleApps[0];
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">
-            Dashboard
-          </h1>
-          <p className="text-muted-foreground">
-            Welcome back — here&apos;s where your job search stands.
+    <div>
+      <PageHeading crumbs={["Workspace", "Dashboard"]} title="Dashboard" />
+
+      <div className="mx-auto max-w-6xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-label text-sm text-muted-foreground">
+            {todayLabel ?? " "} · {isLoading ? "Loading…" : encouragement}
           </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button nativeButton={false} render={<Link href="/applications/new" />}>
+          <Button
+            className="bg-purple text-white hover:bg-purple-dark"
+            nativeButton={false}
+            render={<Link href="/applications/new" />}
+          >
             <Plus data-icon="inline-start" />
             New application
           </Button>
-          <Button variant="outline" nativeButton={false} render={<Link href="/resume" />}>
-            <FileText data-icon="inline-start" />
-            Upload resume
-          </Button>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon }) => (
-          <Card key={label} className="transition-shadow hover:shadow-md">
-            <CardContent className="flex items-center gap-4">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-primary/15">
-                <Icon className="size-5" />
-              </span>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-muted-foreground">
-                  {label}
-                </p>
-                <p className="text-2xl font-semibold tracking-tight">
-                  {isLoading ? "…" : value}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card className="min-w-0">
-          <CardHeader>
-            <CardTitle>Pipeline</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {!isLoading && apps.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Your pipeline is empty — add an application to see the
-                breakdown by stage.
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {statCards.map((card) => (
+            <div
+              key={card.label}
+              className="rounded-2xl bg-card p-5 shadow-card"
+            >
+              <p className="font-label text-xs font-bold tracking-widest text-muted-foreground uppercase">
+                {card.label}
               </p>
-            )}
-            {apps.length > 0 && (
-              <>
-                {/* One segmented bar for the whole pipeline, then a row
-                    per stage — same data as the kanban board, at a glance. */}
-                <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
-                  {statusCounts.map(
-                    ({ status, count }) =>
-                      count > 0 && (
-                        <div
-                          key={status}
-                          className={STATUS_DOT_COLORS[status]}
-                          style={{ width: `${(count / apps.length) * 100}%` }}
-                        />
-                      ),
-                  )}
+              <p className="mt-2 font-heading text-4xl font-bold tracking-tight">
+                {isLoading ? "—" : card.value}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {isLoading ? " " : card.caption}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <Card className="min-w-0 lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Needs your attention</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : topStale ? (
+                <div className="space-y-3">
+                  <Badge variant="warm">Follow up today</Badge>
+                  <div>
+                    <p className="font-heading text-xl font-semibold">
+                      {topStale.company}
+                    </p>
+                    <p className="text-muted-foreground">{topStale.jobTitle}</p>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Applied {daysSince(topStale.createdAt)} days ago · no
+                    response yet
+                    {staleApps.length > 1 &&
+                      ` — ${staleApps.length - 1} more waiting on you`}
+                  </p>
+                  <Button
+                    variant="outline"
+                    nativeButton={false}
+                    render={<Link href={`/applications/${topStale.id}`} />}
+                  >
+                    Draft a follow-up
+                  </Button>
                 </div>
-                <ul className="space-y-3">
-                  {statusCounts.map(({ status, count }) => (
-                    <li
-                      key={status}
-                      className="flex items-center justify-between gap-3 text-sm"
-                    >
-                      <span className="flex items-center gap-2">
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Nothing waiting on you — every application is fresh.
+                </p>
+              )}
+
+              {!isLoading && apps.length > 0 && (
+                <div className="border-t pt-4">
+                  <p className="font-label mb-2 text-xs font-bold tracking-widest text-muted-foreground uppercase">
+                    Pipeline
+                  </p>
+                  <div className="flex h-2 w-full overflow-hidden rounded-full bg-muted">
+                    {statusCounts.map(
+                      ({ status, count }) =>
+                        count > 0 && (
+                          <div
+                            key={status}
+                            className={STATUS_DOT_COLORS[status]}
+                            style={{ width: `${(count / apps.length) * 100}%` }}
+                          />
+                        ),
+                    )}
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    {statusCounts.map(({ status, count }) => (
+                      <span key={status} className="flex items-center gap-1.5">
                         <span
-                          className={`size-2 rounded-full ${STATUS_DOT_COLORS[status]}`}
+                          className={`size-1.5 rounded-full ${STATUS_DOT_COLORS[status]}`}
                         />
-                        {STATUS_LABELS[status]}
-                      </span>
-                      <span className="flex items-baseline gap-2">
-                        <span className="font-semibold">{count}</span>
-                        <span className="w-10 text-right text-xs text-muted-foreground">
-                          {apps.length
-                            ? Math.round((count / apps.length) * 100)
-                            : 0}
-                          %
+                        {STATUS_LABELS[status]}{" "}
+                        <span className="font-medium text-foreground">
+                          {count}
                         </span>
                       </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-        <Card className="min-w-0">
-          <CardHeader>
-            <CardTitle>Recent applications</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!isLoading && recent.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No applications yet — add your first one to get started.
-              </p>
-            )}
-            <ul className="divide-y">
-              {recent.map((app) => (
-                <li key={app.id}>
-                  <Link
-                    href={`/applications/${app.id}`}
-                    className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {app.company}
-                      </p>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {app.jobTitle}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {app.fitScore !== null && (
-                        <Badge variant="secondary">
-                          {Math.round(app.fitScore)}%
+          <Card className="min-w-0">
+            <CardHeader>
+              <CardTitle>Recent applications</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!isLoading && recent.length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No applications yet — add your first one to get started.
+                </p>
+              )}
+              <ul className="divide-y">
+                {recent.map((app) => (
+                  <li key={app.id}>
+                    <Link
+                      href={`/applications/${app.id}`}
+                      className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-heading font-semibold">
+                          {app.company}
+                        </p>
+                        <p className="truncate text-sm text-muted-foreground">
+                          {app.jobTitle}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {app.fitScore !== null && (
+                          <Badge variant="secondary">
+                            {Math.round(app.fitScore)}%
+                          </Badge>
+                        )}
+                        <Badge variant={STATUS_VARIANTS[app.status]}>
+                          {STATUS_LABELS[app.status]}
                         </Badge>
-                      )}
-                      <Badge variant={STATUS_VARIANTS[app.status]}>
-                        {STATUS_LABELS[app.status]}
-                      </Badge>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card className="min-w-0">
-          <CardHeader>
-            <CardTitle>Needs follow-up</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!isLoading && staleApps.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                Nothing waiting on you — all applications are fresh.
-              </p>
-            )}
-            <ul className="divide-y">
-              {staleApps.map((app) => (
-                <li key={app.id}>
-                  <Link
-                    href={`/applications/${app.id}`}
-                    className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {app.company}
-                      </p>
-                      <p className="truncate text-sm text-muted-foreground">
-                        {app.jobTitle}
-                      </p>
-                    </div>
-                    <Badge variant="destructive">
-                      <Clock data-icon="inline-start" />
-                      Follow up
-                    </Badge>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

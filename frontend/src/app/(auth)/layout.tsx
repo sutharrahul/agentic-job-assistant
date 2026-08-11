@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 
 export default function AuthLayout({
   children,
@@ -7,19 +6,13 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative flex min-h-screen flex-col">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[420px] bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,color-mix(in_oklch,var(--primary)_10%,transparent),transparent)]"
-      />
+    <div className="flex min-h-screen flex-col bg-background">
       <header className="p-4 sm:p-6">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 font-heading font-semibold"
+          className="inline-flex items-center gap-2 font-label text-sm font-bold"
         >
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Sparkles className="size-4" />
-          </span>
+          <span className="size-2 shrink-0 rounded-full bg-purple" />
           Agentic Job Assistant
         </Link>
       </header>

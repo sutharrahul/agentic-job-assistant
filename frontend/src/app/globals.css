@@ -8,8 +8,19 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: var(--font-jetbrains-mono);
+  /* Same face as --font-sans now (both Inter) — kept as its own name so
+     "this is a heading" stays a declared intent at call sites, not an
+     accident of both variables happening to match. */
   --font-heading: var(--font-sans);
+  /* Space Mono's new, narrower role: applied explicitly wherever text
+     wants to read as a label rather than prose — breadcrumbs, eyebrow
+     text, stat captions, the wordmark. Everywhere else defaults to
+     --font-sans (Inter) now. */
+  --font-label: var(--font-label);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 20px rgba(0, 0, 0, 0.1),
+    0 8px 40px rgba(0, 0, 0, 0.06);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,82 +50,161 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Brand accent + surface scale, registered as real Tailwind color
+     utilities (bg-purple, text-purple-light, bg-surface-1, ...) —
+     matching how the reference design system (rahuls-portfolio) exposes
+     them via tailwind.config.ts's theme.extend.colors, not just as raw
+     CSS custom properties. --purple-glow/-subtle stay unregistered here
+     too, same as the reference: they're only ever consumed via var() in
+     specific rules (selection, scrollbar), not used as utility classes. */
+  --color-purple: var(--purple);
+  --color-purple-light: var(--purple-light);
+  --color-purple-dark: var(--purple-dark);
+  /* Registered as a utility (bg-purple-subtle) now that it has a real
+     use: soft coral status pills ("Reviewed", "Good fit") — background
+     at ~8-10% and paired with text-purple-dark for the label. */
+  --color-purple-subtle: var(--purple-subtle);
+  --color-surface-0: var(--surface-0);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  /* xl/2xl/3xl are the design system's literal values, not scaled from
+     --radius — its own scale is xl=0.75rem (same as base), 2xl=1rem,
+     3xl=1.5rem, unlike sm/md/lg which stay proportional to --radius. */
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.511 0.262 276.966);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* --background is the page backdrop (design system's surface-0);
+     --card is the surface that sits on top of it (surface-1) — the two
+     being different shades (F5F5F5 vs FFFFFF) is what gives cards their
+     lift, independent of the shadow tokens above. */
+  --background: #f5f5f5;
+  --foreground: #14181d;
+  --card: #ffffff;
+  --card-foreground: #14181d;
+  --popover: #ffffff;
+  --popover-foreground: #14181d;
+  --primary: #14181d;
+  --primary-foreground: #ffffff;
+  --secondary: #efedea;
+  --secondary-foreground: #14181d;
+  --muted: #efedea;
+  --muted-foreground: rgba(20, 24, 29, 0.62);
+  --accent: #efedea;
+  --accent-foreground: #14181d;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.673 0.182 276.935);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.511 0.262 276.966);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.673 0.182 276.935);
+  --border: rgba(20, 24, 29, 0.12);
+  /* Slightly higher opacity than --border, matching the reference — an
+     input's outline is meant to read as a touch more present than a
+     card's edge. */
+  --input: rgba(20, 24, 29, 0.14);
+  /* Brand accent, not a neutral — same value in both modes. */
+  --ring: #d97757;
+
+  /* Brand accent scale, exposed as its own tokens rather than only
+     living inside --ring — the reference uses these directly for
+     hover/active states and gradients, not just focus rings. */
+  --purple: #d97757;
+  --purple-light: #e6987e;
+  --purple-dark: #b8654a;
+  --purple-glow: rgba(217, 119, 87, 0.25);
+  --purple-subtle: rgba(217, 119, 87, 0.08);
+
+  /* The full surface scale --background/--card only sample from (0/1
+     above) — exposed so components can reach a third or fourth layer of
+     depth without hand-picking a new color. */
+  --surface-0: #f5f5f5;
+  --surface-1: #ffffff;
+  --surface-2: #f0eeeb;
+  --surface-3: #e6e3de;
+
+  /* A third text-opacity step below --muted-foreground, for content
+     that should read as present but clearly secondary to secondary
+     (timestamps, placeholder-style hints). */
+  --text-primary: #14181d;
+  --text-secondary: rgba(20, 24, 29, 0.62);
+  --text-tertiary: rgba(20, 24, 29, 0.42);
+
+  /* Brand-derived rather than neutral grays — matches the reference,
+     and reads better than desaturated grays wherever fitScore or
+     application-status breakdowns eventually get charted. */
+  --chart-1: #d97757;
+  --chart-2: #e6987e;
+  --chart-3: #b8654a;
+  --chart-4: #14181d;
+  --chart-5: #ffffff;
+  --radius: 0.75rem;
+  /* Was a stale, unused oklch purple-tint left from the original shadcn
+     scaffold — never actually applied to a real sidebar until now.
+     Sidebar sits at the same tone as the page backdrop (--background);
+     the active nav item pops off it as --card (white), the same
+     background/card relationship every other surface in the app already
+     uses, rather than inventing a third tone. */
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--purple);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--card);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--purple);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.585 0.233 277.117);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: #141414;
+  --foreground: #f5f5f5;
+  --card: #1c1c1c;
+  --card-foreground: #f5f5f5;
+  --popover: #1c1c1c;
+  --popover-foreground: #f5f5f5;
+  --primary: #f5f5f5;
+  --primary-foreground: #141414;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #f5f5f5;
+  --muted: #1f1f1f;
+  --muted-foreground: rgba(245, 245, 245, 0.75);
+  --accent: #1f1f1f;
+  --accent-foreground: #f5f5f5;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.585 0.233 277.117);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.585 0.233 277.117);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.585 0.233 277.117);
+  --border: rgba(245, 245, 245, 0.1);
+  --input: rgba(245, 245, 245, 0.12);
+  --ring: #d97757;
+
+  --purple: #d97757;
+  --purple-light: #e6987e;
+  --purple-dark: #b8654a;
+  --purple-glow: rgba(217, 119, 87, 0.35);
+  --purple-subtle: rgba(217, 119, 87, 0.1);
+
+  --surface-0: #141414;
+  --surface-1: #1c1c1c;
+  --surface-2: #242424;
+  --surface-3: #2e2e2e;
+
+  --text-primary: #f5f5f5;
+  --text-secondary: rgba(245, 245, 245, 0.75);
+  --text-tertiary: rgba(245, 245, 245, 0.55);
+
+  --chart-1: #d97757;
+  --chart-2: #e6987e;
+  --chart-3: #b8654a;
+  --chart-4: #2c2c2c;
+  --chart-5: #f5f5f5;
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--purple);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--card);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--purple);
 }
 
 @layer base {
@@ -126,5 +216,42 @@
   }
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Matches the reference design system's scrollbar/selection/focus
+     treatment exactly — track transparent rather than themed, thumb at
+     --purple-glow resting and full --purple on hover, so the brand
+     accent shows up in ambient chrome, not just on focused controls. */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--purple-glow);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--purple);
+  }
+
+  ::selection {
+    background: var(--purple-glow);
+    color: var(--text-primary);
+  }
+
+  /* Explicit rather than relying only on outline-ring/50 above: a solid
+     2px brand-colored ring reads more deliberately than the default
+     50%-opacity ring color shadcn ships with, and matches the reference
+     site's focus treatment exactly. */
+  :focus-visible {
+    outline: 2px solid var(--purple);
+    outline-offset: 2px;
+    border-radius: 4px;
   }
 }

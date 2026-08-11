@@ -1,17 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { FileText } from "lucide-react";
 import { Resume } from "@/lib/types/resume";
 import { latestResume, listResumes } from "@/lib/api/resumes";
 import { ResumeUploadForm } from "@/components/resume/resume-upload-form";
 import { ResumePreviewForm } from "@/components/resume/resume-preview-form";
 import { Button } from "@/components/ui/button";
+import { PageHeading } from "@/components/layout/page-heading";
 
 export default function ResumePage() {
   const [resume, setResume] = useState<Resume | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isReplacing, setIsReplacing] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by the retry button to re-run the effect below.
+  const [retryKey, setRetryKey] = useState(0);
 
   // Without this, a confirmed resume "disappears" on every refresh —
   // GET /resumes already existed on the backend, nothing here ever
@@ -23,18 +27,23 @@ export default function ResumePage() {
   // was merely asleep showed a returning user the upload form, which
   // reads as "my saved resume is gone". On a free tier that isn't an
   // edge case; it's what the first request after an idle period does.
-  const load = useCallback(() => {
-    setIsLoading(true);
-    setLoadFailed(false);
+  //
+  // Every setState here happens inside a then/catch/finally callback,
+  // never synchronously at the top of the effect body — isLoading starts
+  // true via its initial state for the first run, and the retry button
+  // sets it back to true itself before bumping retryKey. That split
+  // matters: a setState called synchronously in an effect body (rather
+  // than from an async callback) is exactly what triggers React's
+  // set-state-in-effect lint rule.
+  useEffect(() => {
     listResumes()
-      .then((resumes) => setResume(latestResume(resumes)))
+      .then((resumes) => {
+        setResume(latestResume(resumes));
+        setLoadFailed(false);
+      })
       .catch(() => setLoadFailed(true))
       .finally(() => setIsLoading(false));
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  }, [retryKey]);
 
   // A FAILED resume is still a resume, so gating the upload form on
   // `!resume` alone left the "try uploading it again" hint pointing at a
@@ -58,9 +67,11 @@ export default function ResumePage() {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6 lg:p-8">
-        <h1 className="text-2xl font-semibold">Resume</h1>
-        <p className="text-sm text-muted-foreground">Loading...</p>
+      <div>
+        <PageHeading crumbs={["Workspace", "Resume"]} title="Resume" />
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -70,61 +81,95 @@ export default function ResumePage() {
   // a guess, and guessing wrong is exactly the failure this avoids.
   if (loadFailed) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6 lg:p-8">
-        <h1 className="text-2xl font-semibold">Resume</h1>
-        <p className="text-sm text-destructive">
-          We couldn&apos;t load your resume. The server may still be waking
-          up — this can take up to a minute on the free tier.
-        </p>
-        <Button variant="outline" onClick={load}>
-          Try again
-        </Button>
+      <div>
+        <PageHeading crumbs={["Workspace", "Resume"]} title="Resume" />
+        <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+          <p className="text-sm text-destructive">
+            We couldn&apos;t load your resume. The server may still be waking
+            up — this can take up to a minute on the free tier.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setIsLoading(true);
+              setRetryKey((k) => k + 1);
+            }}
+          >
+            Try again
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 p-4 sm:p-6 lg:p-8">
-      <h1 className="text-2xl font-semibold">Resume</h1>
+    <div>
+      <PageHeading crumbs={["Workspace", "Resume"]} title="Resume" />
 
-      {resume?.status === "FAILED" && (
-        <p className="text-sm text-destructive">
-          We couldn&apos;t parse that resume. Try uploading it again.
-        </p>
-      )}
+      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        {resume?.status === "FAILED" && (
+          <p className="text-sm text-destructive">
+            We couldn&apos;t parse that resume. Try uploading it again.
+          </p>
+        )}
 
-      {showUploadForm && <ResumeUploadForm onUploaded={handleUploaded} />}
+        {previewResume && (
+          <div className="flex items-center gap-4 rounded-2xl bg-card p-5 shadow-card">
+            <span className="flex shrink-0 items-center justify-center rounded-xl bg-purple-subtle p-2.5 text-purple-dark">
+              <FileText className="size-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-heading truncate font-semibold">
+                {previewResume.fileName}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {previewResume.status === "CONFIRMED" ? "Confirmed" : "Parsed"}{" "}
+                ·{" "}
+                {new Date(previewResume.createdAt).toLocaleDateString(
+                  undefined,
+                  { month: "short", day: "numeric", year: "numeric" },
+                )}
+              </p>
+            </div>
+            <Button variant="outline" onClick={() => setIsReplacing(true)}>
+              Replace file
+            </Button>
+          </div>
+        )}
 
-      {isReplacing && (
-        <Button variant="ghost" onClick={() => setIsReplacing(false)}>
-          Cancel
-        </Button>
-      )}
+        {showUploadForm && (
+          <div className="space-y-3">
+            <h2 className="font-heading text-base font-medium">
+              Resume source
+            </h2>
+            <ResumeUploadForm onUploaded={handleUploaded} />
+            {isReplacing && (
+              <Button variant="ghost" onClick={() => setIsReplacing(false)}>
+                Cancel
+              </Button>
+            )}
+          </div>
+        )}
 
-      {/* PROCESSING is normally transient — parsing happens inside the
-          upload request. It's only reachable if the backend died
-          mid-parse, which otherwise rendered a blank page. */}
-      {!isReplacing && resume?.status === "PROCESSING" && (
-        <p className="text-sm text-muted-foreground">
-          Still processing this resume. Refresh in a moment.
-        </p>
-      )}
+        {/* PROCESSING is normally transient — parsing happens inside the
+            upload request. It's only reachable if the backend died
+            mid-parse, which otherwise rendered a blank page. */}
+        {!isReplacing && resume?.status === "PROCESSING" && (
+          <p className="text-sm text-muted-foreground">
+            Still processing this resume. Refresh in a moment.
+          </p>
+        )}
 
-      {previewResume && (
-        <ResumePreviewForm resume={previewResume} onConfirmed={setResume} />
-      )}
+        {previewResume && (
+          <ResumePreviewForm resume={previewResume} onConfirmed={setResume} />
+        )}
 
-      {!isReplacing && resume?.status === "CONFIRMED" && (
-        <p className="text-sm text-muted-foreground">
-          Saved as your base resume.
-        </p>
-      )}
-
-      {previewResume && (
-        <Button variant="outline" onClick={() => setIsReplacing(true)}>
-          Upload a different resume
-        </Button>
-      )}
+        {!isReplacing && resume?.status === "CONFIRMED" && (
+          <p className="text-sm text-muted-foreground">
+            Saved as your base resume.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

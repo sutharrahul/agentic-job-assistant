@@ -15,6 +15,17 @@ const SKILL_GAPS = [
   { skill: "GraphQL", value: 40 },
 ];
 
+// Stronger skills get the deepest accent tone, weaker ones the
+// lightest — the bar color itself reads as a confidence signal instead
+// of every skill looking identically "done," and it puts all three
+// brand accent tones (light/default/dark) to use rather than picking
+// one arbitrarily.
+function skillBarColor(value: number) {
+  if (value >= 80) return "bg-purple-dark";
+  if (value >= 60) return "bg-purple";
+  return "bg-purple-light";
+}
+
 const SUGGESTIONS = [
   "Add measurable impact to your last role's bullet points.",
   "Highlight your LangGraph project — it matches this listing.",
@@ -45,7 +56,7 @@ export function DashboardPreview() {
               <span className="size-2.5 rounded-full bg-muted" />
               <span className="size-2.5 rounded-full bg-muted" />
               <span className="size-2.5 rounded-full bg-muted" />
-              <span className="ml-2 text-xs text-muted-foreground">
+              <span className="font-label ml-2 text-xs text-muted-foreground">
                 dashboard.agenticjobassistant.app
               </span>
             </div>
@@ -62,7 +73,7 @@ export function DashboardPreview() {
                   <span className="pb-1.5 text-sm text-muted-foreground">/ 100</span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full w-[87%] rounded-full bg-foreground" />
+                  <div className="h-full w-[87%] rounded-full bg-purple" />
                 </div>
                 <p className="text-xs text-muted-foreground">
                   Strong for Senior Frontend roles.
@@ -75,16 +86,16 @@ export function DashboardPreview() {
                 <div className="flex flex-1 flex-col justify-center gap-3">
                   {SKILL_GAPS.map(({ skill, value }) => (
                     <div key={skill} className="flex items-center gap-3">
-                      <span className="w-28 shrink-0 text-xs text-muted-foreground">
+                      <span className="font-label w-28 shrink-0 text-xs text-muted-foreground">
                         {skill}
                       </span>
                       <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-foreground/80"
+                          className={`h-full rounded-full ${skillBarColor(value)}`}
                           style={{ width: `${value}%` }}
                         />
                       </div>
-                      <span className="w-8 shrink-0 text-right text-xs text-muted-foreground">
+                      <span className="font-label w-8 shrink-0 text-right text-xs text-muted-foreground">
                         {value}%
                       </span>
                     </div>
@@ -98,7 +109,7 @@ export function DashboardPreview() {
                 <div className="grid grid-cols-3 gap-2">
                   {KANBAN.map((col) => (
                     <div key={col.title} className="flex flex-col gap-2 rounded-lg bg-muted/50 p-2">
-                      <span className="px-1 text-xs font-medium text-muted-foreground">
+                      <span className="font-label px-1 text-xs font-medium text-muted-foreground">
                         {col.title}
                       </span>
                       {col.items.map((item) => (
@@ -138,7 +149,7 @@ export function DashboardPreview() {
                     <div key={app.role} className="flex items-center justify-between py-2.5">
                       <span className="text-sm">{app.role}</span>
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-muted-foreground">
+                        <span className="font-label text-xs text-muted-foreground">
                           Fit {app.score}%
                         </span>
                         <Badge variant="outline">{app.stage}</Badge>

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useId, useState, type ChangeEvent } from "react";
 import { AxiosError } from "axios";
+import { Upload } from "lucide-react";
 import { api } from "@/lib/axios";
 import { Resume } from "@/lib/types/resume";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 
 const ACCEPTED_TYPES = [
   "application/pdf",
@@ -22,6 +22,7 @@ export function ResumeUploadForm({
 }: {
   onUploaded: (resume: Resume) => void;
 }) {
+  const inputId = useId();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -68,18 +69,32 @@ export function ResumeUploadForm({
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Input
+      <label
+        htmlFor={inputId}
+        className="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-card p-10 text-center transition-colors hover:border-purple/50"
+      >
+        <span className="flex size-10 items-center justify-center rounded-full bg-purple-subtle text-purple-dark">
+          <Upload className="size-5" />
+        </span>
+        <p className="text-sm text-foreground">
+          Drop a new resume here, or{" "}
+          <span className="font-medium text-purple underline underline-offset-2">
+            choose a file
+          </span>
+        </p>
+        <p className="text-xs text-muted-foreground">PDF or DOCX · up to 5MB</p>
+        <input
+          id={inputId}
           type="file"
           accept=".pdf,.docx"
           onChange={handleFileChange}
           disabled={isUploading}
+          className="sr-only"
         />
-        <p className="text-sm text-muted-foreground">
-          PDF or DOCX, up to 5MB. We&apos;ll extract your skills, experience,
-          education, and projects automatically.
-        </p>
-      </div>
+      </label>
+      {file && (
+        <p className="text-sm text-muted-foreground">Selected: {file.name}</p>
+      )}
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button onClick={handleUpload} disabled={!file || isUploading}>
         {isUploading ? "Uploading & parsing..." : "Upload resume"}

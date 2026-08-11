@@ -26,7 +26,7 @@ export function TechStack() {
     <section className="border-y border-border bg-muted/20 px-4 py-16 sm:px-6">
       <div className="mx-auto max-w-6xl">
         <Reveal className="text-center">
-          <span className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+          <span className="font-label text-xs font-semibold tracking-widest text-muted-foreground uppercase">
             Trusted technologies
           </span>
         </Reveal>
