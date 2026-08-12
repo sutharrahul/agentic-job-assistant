@@ -8,7 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeading } from "@/components/layout/page-heading";
-import { Application, ApplicationStatus } from "@/lib/types/application";
+import {
+  Application,
+  ApplicationStatus,
+  InterviewRound,
+} from "@/lib/types/application";
 import { isStale, listApplications } from "@/lib/api/applications";
 
 const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -50,6 +54,44 @@ function daysSince(iso: string): number {
 function countAddedInLastWeek(apps: Application[]): number {
   return apps.filter((a) => Date.now() - new Date(a.createdAt).getTime() < 7 * DAY_MS)
     .length;
+}
+
+// A round paired with the application it belongs to — the upcoming list is
+// the one cross-application view on this page, so rows need both.
+type UpcomingInterview = { app: Application; round: InterviewRound };
+
+// "Upcoming" is deliberately narrow: still SCHEDULED (a COMPLETED or
+// CANCELLED round is history, not a commitment) and still in the future.
+// Every future round is listed, not just each application's next one — two
+// rounds booked at the same company are two things to prepare for, and
+// collapsing them would hide the second.
+function upcomingInterviews(apps: Application[]): UpcomingInterview[] {
+  const now = Date.now();
+  return apps
+    .flatMap((app) =>
+      app.interviewRounds
+        .filter(
+          (round) =>
+            round.status === "SCHEDULED" &&
+            new Date(round.scheduledAt).getTime() >= now,
+        )
+        .map((round) => ({ app, round })),
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.round.scheduledAt).getTime() -
+        new Date(b.round.scheduledAt).getTime(),
+    );
+}
+
+function formatInterviewSlot(iso: string): string {
+  return new Date(iso).toLocaleString("en-IN", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 // "Now" is external, mutable state from the client's clock — the server
@@ -156,6 +198,11 @@ export default function DashboardPage() {
     .slice(0, 5);
 
   const topStale = staleApps[0];
+  const upcoming = upcomingInterviews(apps);
+  // Same cap as "Recent applications", but the overflow is stated rather
+  // than silently dropped — a hidden interview is the one thing on this
+  // page you cannot afford to miss.
+  const visibleUpcoming = upcoming.slice(0, 5);
 
   return (
     <div>
@@ -263,6 +310,52 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Above "Recent applications" on purpose: a scheduled interview
+              is the only time-critical thing on this page. */}
+          <Card className="min-w-0">
+            <CardHeader>
+              <CardTitle>Upcoming interviews</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {visibleUpcoming.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No interviews scheduled — add a round from an application to
+                  see it here.
+                </p>
+              ) : (
+                <>
+                  {visibleUpcoming.map(({ app, round }) => (
+                    <Link
+                      key={round.id}
+                      href={`/applications/${app.id}`}
+                      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-xl border px-3.5 py-2.5 transition-colors hover:bg-muted/40"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-heading truncate font-semibold">
+                          {app.jobTitle}
+                        </p>
+                        <p className="truncate text-sm text-muted-foreground">
+                          {app.company}
+                          {" · "}
+                          {round.roundNumber ? `Round ${round.roundNumber} · ` : ""}
+                          {round.type} · {round.mode}
+                        </p>
+                      </div>
+                      <span className="font-label shrink-0 text-xs text-muted-foreground">
+                        {formatInterviewSlot(round.scheduledAt)}
+                      </span>
+                    </Link>
+                  ))}
+                  {upcoming.length > visibleUpcoming.length && (
+                    <p className="text-xs text-muted-foreground">
+                      +{upcoming.length - visibleUpcoming.length} more scheduled.
+                    </p>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>

@@ -32,14 +32,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageHeading } from "@/components/layout/page-heading";
 import { FitAnalysisCard } from "@/components/applications/fit-analysis-card";
 import { StatusDetailsCard } from "@/components/applications/status-details-card";
 import { CoverLetterCard } from "@/components/applications/cover-letter-card";
+import { InterviewRoundsCard } from "@/components/applications/interview-rounds-card";
 import { InterviewPrepCard } from "@/components/applications/interview-prep-card";
 import { Application, ApplicationStatus } from "@/lib/types/application";
 import {
+  addNote,
   deleteApplication,
+  deleteNote,
   getApplication,
   isStale,
   updateApplication,
@@ -64,17 +68,14 @@ export function ApplicationDetail({ id }: { id: string }) {
   const router = useRouter();
   const [app, setApp] = useState<Application | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [notes, setNotes] = useState("");
-  const [notesSaved, setNotesSaved] = useState(false);
+  const [newNote, setNewNote] = useState("");
+  const [isAddingNote, setIsAddingNote] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     getApplication(id)
-      .then((data) => {
-        setApp(data);
-        setNotes(data.notes);
-      })
+      .then((data) => setApp(data))
       .catch(() => setApp(null))
       .finally(() => setIsLoading(false));
   }, [id]);
@@ -113,14 +114,24 @@ export function ApplicationDetail({ id }: { id: string }) {
     });
   }
 
-  async function handleSaveNotes() {
+  async function handleAddNote() {
+    if (!newNote.trim()) return;
+    setIsAddingNote(true);
     try {
-      const updated = await updateApplication(id, { notes });
-      setApp(updated);
-      setNotesSaved(true);
-      setTimeout(() => setNotesSaved(false), 2000);
+      setApp(await addNote(id, newNote.trim()));
+      setNewNote("");
     } catch {
-      toast.error("Couldn't save notes — please try again.");
+      toast.error("Couldn't add the note — please try again.");
+    } finally {
+      setIsAddingNote(false);
+    }
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    try {
+      setApp(await deleteNote(id, noteId));
+    } catch {
+      toast.error("Couldn't delete the note — please try again.");
     }
   }
 
@@ -241,25 +252,61 @@ export function ApplicationDetail({ id }: { id: string }) {
           <CoverLetterCard app={app} onUpdated={setApp} />
         </div>
 
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          {/* min-w-0 on every grid child: grid items refuse to shrink below
-              their content width by default, so one long unbroken line (a
-              URL in a job description, say) would otherwise push the whole
-              page into horizontal overflow. */}
-          <div className="min-w-0 lg:col-span-2">
+        {/* Tabbed workspace: job description, per-status details + notes,
+            and interview prep each get their own focused view instead of
+            competing for space in a stacked/grid layout — the page no
+            longer grows as tall as its longest section. */}
+        <Tabs defaultValue="overview" className="gap-4">
+          <TabsList variant="line" className="h-auto w-fit gap-1 bg-transparent p-0">
+            <TabsTrigger
+              value="overview"
+              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="details"
+              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
+            >
+              Details &amp; notes
+            </TabsTrigger>
+            {/* Unlike the prep gate below, this persists past the Interview
+                stage — a rejected application's debrief notes are the most
+                valuable ones, so the tab shouldn't vanish with the status. */}
+            {(app.status === "APPLIED" ||
+              app.status === "INTERVIEW" ||
+              app.interviewRounds.length > 0) && (
+              <TabsTrigger
+                value="rounds"
+                className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
+              >
+                Interview rounds
+              </TabsTrigger>
+            )}
+            {(app.status === "APPLIED" || app.status === "INTERVIEW") && (
+              <TabsTrigger
+                value="prep"
+                className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
+              >
+                Interview prep
+              </TabsTrigger>
+            )}
+          </TabsList>
+
+          <TabsContent value="overview">
             <Card className="rounded-2xl shadow-card">
               <CardHeader>
                 <CardTitle>Job description</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="max-h-80 overflow-y-auto text-sm break-words whitespace-pre-wrap text-muted-foreground">
+                <p className="max-h-[32rem] overflow-y-auto text-sm break-words whitespace-pre-wrap text-muted-foreground">
                   {app.jobDescription}
                 </p>
               </CardContent>
             </Card>
-          </div>
+          </TabsContent>
 
-          <div className="min-w-0 space-y-4">
+          <TabsContent value="details" className="space-y-4">
             {/* Contextual per-status form — switches with the dropdown above. */}
             <StatusDetailsCard app={app} onUpdated={setApp} />
 
@@ -269,25 +316,71 @@ export function ApplicationDetail({ id }: { id: string }) {
               </CardHeader>
               <CardContent className="space-y-3">
                 <Textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
                   placeholder="Recruiter contacts, interview prep, next steps..."
                   rows={5}
                 />
-                <div className="flex items-center gap-3">
-                  <Button size="sm" variant="outline" onClick={handleSaveNotes}>
-                    Save notes
-                  </Button>
-                  {notesSaved && (
-                    <span className="text-xs text-muted-foreground">Saved</span>
-                  )}
-                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleAddNote}
+                  disabled={isAddingNote || !newNote.trim()}
+                >
+                  Add note
+                </Button>
+
+                {app.notes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No notes yet.</p>
+                ) : (
+                  <ul className="max-h-80 space-y-2 overflow-y-auto">
+                    {[...app.notes].reverse().map((note) => (
+                      <li
+                        key={note.id}
+                        className="flex items-start justify-between gap-2 rounded-lg border border-border p-2 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <p className="break-words whitespace-pre-wrap">
+                            {note.content}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(note.createdAt)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm("Delete this note?")) {
+                              handleDeleteNote(note.id);
+                            }
+                          }}
+                          className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                        >
+                          <Trash2 className="size-3.5" />
+                          <span className="sr-only">Delete note</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </CardContent>
             </Card>
-          </div>
-        </div>
+          </TabsContent>
 
-        <InterviewPrepCard app={app} onUpdated={setApp} />
+          {(app.status === "APPLIED" ||
+            app.status === "INTERVIEW" ||
+            app.interviewRounds.length > 0) && (
+            <TabsContent value="rounds">
+              <InterviewRoundsCard app={app} onUpdated={setApp} />
+            </TabsContent>
+          )}
+
+          {(app.status === "APPLIED" || app.status === "INTERVIEW") && (
+            <TabsContent value="prep">
+              <InterviewPrepCard app={app} onUpdated={setApp} />
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
     </div>
   );

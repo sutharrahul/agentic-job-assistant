@@ -1,12 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  CalendarClock,
-  PartyPopper,
-  Send,
-  XCircle,
-} from "lucide-react";
+import { PartyPopper, Send, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -18,8 +13,12 @@ import { cn } from "@/lib/utils";
 
 // Per-status header treatment — same hues as the kanban lanes so the
 // card immediately reads as "this is about the Applied/Offer/… stage".
+// INTERVIEW is excluded: that stage's details now live in interview
+// rounds (see the guard below), and narrowing the Record type here makes
+// a future accidental removal of that guard a compile error rather than
+// a runtime crash.
 const STATUS_CONFIG: Record<
-  ApplicationStatus,
+  Exclude<ApplicationStatus, "INTERVIEW">,
   {
     title: string;
     description: string;
@@ -32,12 +31,6 @@ const STATUS_CONFIG: Record<
     description: "Where and how you applied — useful when following up.",
     icon: Send,
     chipClass: "bg-sky-500/10 text-sky-600 dark:text-sky-400",
-  },
-  INTERVIEW: {
-    title: "Interview details",
-    description: "Track the round and when it's happening.",
-    icon: CalendarClock,
-    chipClass: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   OFFER: {
     title: "Offer details",
@@ -53,18 +46,7 @@ const STATUS_CONFIG: Record<
   },
 };
 
-// ISO from the API -> value an <input type="datetime-local"/"date"> can
-// display. datetime-local wants LOCAL wall-clock time, so shift by the
-// timezone offset before slicing (plain .slice on the UTC string would
-// show the wrong hour).
-function isoToDatetimeLocal(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
-    .toISOString()
-    .slice(0, 16);
-}
-
+// ISO from the API -> value an <input type="date"> can display.
 function isoToDateInput(iso: string | null): string {
   return iso ? new Date(iso).toISOString().slice(0, 10) : "";
 }
@@ -77,12 +59,6 @@ export function StatusDetailsCard({
   onUpdated: (app: Application) => void;
 }) {
   const [appliedVia, setAppliedVia] = useState(app.appliedVia ?? "");
-  const [interviewRound, setInterviewRound] = useState(
-    app.interviewRound ?? "",
-  );
-  const [interviewAt, setInterviewAt] = useState(
-    isoToDatetimeLocal(app.interviewAt),
-  );
   const [offeredCtc, setOfferedCtc] = useState(app.offeredCtc ?? "");
   const [joiningDate, setJoiningDate] = useState(
     isoToDateInput(app.joiningDate),
@@ -101,8 +77,6 @@ export function StatusDetailsCard({
   // drag elsewhere) so the form never shows another status's stale draft.
   useEffect(() => {
     setAppliedVia(app.appliedVia ?? "");
-    setInterviewRound(app.interviewRound ?? "");
-    setInterviewAt(isoToDatetimeLocal(app.interviewAt));
     setOfferedCtc(app.offeredCtc ?? "");
     setJoiningDate(isoToDateInput(app.joiningDate));
     setRejectionStage(app.rejectionStage ?? "");
@@ -110,12 +84,20 @@ export function StatusDetailsCard({
   }, [app]);
 
   async function handleSave() {
+    // Unreachable — the component returns null for INTERVIEW before this
+    // handler's button ever renders — but narrows app.status for the
+    // Record lookup below, since TS can't see through the render guard
+    // into a closure invoked later from onClick.
+    if (app.status === "INTERVIEW") return;
+
     // Only PATCH the group for the current status — the other groups'
     // inputs aren't even rendered, so sending them would just re-save
     // stale drafts.
-    const patchByStatus: Record<ApplicationStatus, UpdateApplicationInput> = {
+    const patchByStatus: Record<
+      Exclude<ApplicationStatus, "INTERVIEW">,
+      UpdateApplicationInput
+    > = {
       APPLIED: { appliedVia },
-      INTERVIEW: { interviewRound, interviewAt },
       OFFER: { offeredCtc, joiningDate },
       REJECTED: { rejectionStage, rejectionReason },
     };
@@ -132,6 +114,10 @@ export function StatusDetailsCard({
       setIsSaving(false);
     }
   }
+
+  // Interview details now live in the rounds tab (see InterviewRoundsCard)
+  // — this card has nothing to show for that status.
+  if (app.status === "INTERVIEW") return null;
 
   const { title, description, icon: Icon, chipClass } =
     STATUS_CONFIG[app.status];
@@ -165,29 +151,6 @@ export function StatusDetailsCard({
               onChange={(e) => setAppliedVia(e.target.value)}
             />
           </div>
-        )}
-
-        {app.status === "INTERVIEW" && (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="interview-round">Round</Label>
-              <Input
-                id="interview-round"
-                placeholder="Round 2 — Technical"
-                value={interviewRound}
-                onChange={(e) => setInterviewRound(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="interview-at">Scheduled for</Label>
-              <Input
-                id="interview-at"
-                type="datetime-local"
-                value={interviewAt}
-                onChange={(e) => setInterviewAt(e.target.value)}
-              />
-            </div>
-          </>
         )}
 
         {app.status === "OFFER" && (

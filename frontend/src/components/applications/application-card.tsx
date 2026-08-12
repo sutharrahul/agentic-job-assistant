@@ -14,7 +14,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Application } from "@/lib/types/application";
-import { deleteApplication, isStale } from "@/lib/api/applications";
+import {
+  deleteApplication,
+  hasUndebriefedRound,
+  isStale,
+  nextScheduledRound,
+} from "@/lib/api/applications";
 import { cn } from "@/lib/utils";
 
 function formatDate(iso: string) {
@@ -24,14 +29,43 @@ function formatDate(iso: string) {
   });
 }
 
+// Calendar-day difference, not a raw 24h-block count — a round scheduled
+// for 1am tomorrow should still read "Tomorrow", not "Today".
+function dueLabel(scheduledAt: string) {
+  const now = new Date();
+  const target = new Date(scheduledAt);
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTarget = new Date(
+    target.getFullYear(),
+    target.getMonth(),
+    target.getDate(),
+  );
+  const dayDiff = Math.round(
+    (startOfTarget.getTime() - startOfToday.getTime()) / (1000 * 60 * 60 * 24),
+  );
+  if (dayDiff <= 0) return "Today";
+  if (dayDiff === 1) return "Tomorrow";
+  return `In ${dayDiff} days`;
+}
+
 // The one per-stage "what's next" signal worth putting on the card face
-// (everything else lives on the detail page): a stale Applied card needs
-// a follow-up, an Interview card without a prep pack yet needs one
-// generated, and Offer/Rejected cards surface their real date instead —
-// three different real fields, not one fabricated status.
+// (everything else lives on the detail page), in priority order: a stale
+// Applied card needs a follow-up; an upcoming round needs the candidate to
+// show up; a completed round with no debrief needs five minutes of
+// reflection; an Interview card without a prep pack yet needs one
+// generated; Offer/Rejected cards surface their real deadline instead.
 function NextStep({ app }: { app: Application }) {
   if (app.status === "APPLIED" && isStale(app)) {
     return <Badge variant="warm">Follow up</Badge>;
+  }
+  const upcoming = nextScheduledRound(app);
+  if (upcoming) {
+    // variant="warm" deliberately matches the "Follow up" badge above —
+    // both are time-sensitive nudges, not calls to action.
+    return <Badge variant="warm">{dueLabel(upcoming.scheduledAt)}</Badge>;
+  }
+  if (hasUndebriefedRound(app)) {
+    return <Badge variant="outline">Debrief</Badge>;
   }
   if (app.status === "INTERVIEW" && !app.interviewPrep) {
     return <Badge variant="outline">Prep</Badge>;
