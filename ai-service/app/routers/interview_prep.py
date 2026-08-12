@@ -9,9 +9,10 @@ router = APIRouter(tags=["interview-prep"])
 @router.post("/interview-prep", response_model=InterviewPrepResponse)
 async def interview_prep(payload: InterviewPrepRequest) -> InterviewPrepResponse:
     # Unlike the single-call endpoints (fit, cover letter), this one runs
-    # a compiled LangGraph: ainvoke() executes derive_focus_areas ->
-    # generate_questions in order, threading one shared state dict
-    # through both (see graph/interview_prep.py for why it's a graph).
+    # a compiled LangGraph: ainvoke() fans out to derive_study_topics and
+    # generate_resume_questions concurrently and returns once both have
+    # merged their results into the shared state dict (see
+    # graph/interview_prep.py for why it's a graph).
     final_state = await interview_prep_graph.ainvoke(
         {
             "parsed_resume": payload.parsed_resume,
@@ -22,7 +23,6 @@ async def interview_prep(payload: InterviewPrepRequest) -> InterviewPrepResponse
 
     return InterviewPrepResponse(
         focus_areas=final_state.get("focus_areas", []),
-        technical_questions=final_state.get("technical_questions", []),
-        behavioral_questions=final_state.get("behavioral_questions", []),
-        gaps_to_prepare=final_state.get("gaps_to_prepare", []),
+        study_topics=final_state.get("study_topics", []),
+        questions=final_state.get("questions", []),
     )
