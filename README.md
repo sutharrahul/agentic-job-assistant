@@ -37,7 +37,7 @@ flowchart LR
     D[FastAPI<br/>AI service]
     E[(Postgres)]
     F[Object storage<br/>resume files]
-    G[LLM provider<br/>Ollama · Gemini · OpenRouter]
+    G[LLM provider<br/>Ollama · Gemini]
 
     B -->|REST + JWT| C
     C -->|internal HTTP| D
@@ -60,7 +60,7 @@ All AI calls funnel through a single `OrchestrationService`, so timeouts, retrie
 
 - **Structured output, not JSON parsing.** Resume parsing, fit analysis, and interview prep bind a Pydantic schema with LangChain's `with_structured_output()`, so the model is constrained to a valid shape instead of being asked to emit JSON that then needs parsing and repair.
 - **Temperature is chosen per task.** Fit scoring runs at `temperature=0` — the same resume against the same job should produce the same score. Cover letters run at `0.7`, because "Regenerate" should give a genuinely different draft.
-- **Provider-agnostic by design.** `app/core/llm.py` is the only file that imports a model class, and it imports each provider lazily inside the branch that needs it — so a deployment loads one SDK, not three. Switching between Ollama, Gemini and OpenRouter is one env var, which is how the whole thing was built locally against a free local model and deployed against a hosted one.
+- **Provider-agnostic by design.** `app/core/llm.py` is the only file that imports a model class, and it imports each provider lazily inside the branch that needs it — so a deployment loads one SDK, not two. Switching between Ollama and Gemini is one env var, which is how the whole thing was built locally against a free local model and deployed against a hosted one.
 - **Human-in-the-loop.** The AI service returns a cover letter *draft*. NestJS stores it with `coverLetterApproved: false`, and only an explicit user click flips that flag.
 - **Files are passed by signed URL.** NestJS uploads the resume to private storage and hands FastAPI a short-lived signed URL rather than the raw bytes, so the AI service never needs storage credentials.
 - **Quota-spending routes are rate limited per user.** The AI actions and resume upload are capped on two windows (per-minute and per-day), keyed on the authenticated user rather than IP — behind a reverse proxy every request shares one address, so IP-based limits would throttle all users as a single bucket.
@@ -69,11 +69,11 @@ All AI calls funnel through a single `OrchestrationService`, so timeouts, retrie
 
 **Frontend** — Next.js 16 (App Router), TypeScript, Tailwind v4, shadcn/ui on Base UI, dnd-kit, axios, Clerk
 **Backend** — NestJS 11, Prisma 6, PostgreSQL, Clerk JWT verification, Supabase Storage
-**AI service** — FastAPI, LangChain, LangGraph, pypdf, python-docx; three interchangeable LLM providers selected by one env var (Ollama for local dev, OpenRouter in deployment, Gemini as the third option)
+**AI service** — FastAPI, LangChain, LangGraph, pypdf, python-docx; two interchangeable LLM providers selected by one env var (Ollama for local dev, Gemini in deployment)
 
 ## Running it locally
 
-**Prerequisites:** Node 22 (both `package.json` files pin `"engines": { "node": "22.x" }`, and Render is pinned to the same), Python 3.11+, a PostgreSQL database, and one LLM provider — [Ollama](https://ollama.com) (free, local), or a Gemini or OpenRouter API key.
+**Prerequisites:** Node 22 (both `package.json` files pin `"engines": { "node": "22.x" }`, and Render is pinned to the same), Python 3.11+, a PostgreSQL database, and one LLM provider — [Ollama](https://ollama.com) (free, local), or a Gemini API key.
 
 ```bash
 git clone https://github.com/sutharrahul/agentic-job-assistant.git
@@ -133,16 +133,12 @@ npm run dev
 
 | Variable | Purpose |
 |---|---|
-| `LLM_PROVIDER` | `ollama`, `gemini`, or `openrouter` |
+| `LLM_PROVIDER` | `ollama` or `gemini` |
 | `GEMINI_API_KEY` | Required when provider is `gemini` |
-| `GEMINI_CHAT_MODEL` | Optional — pin the model id (the default is a moving `latest` alias) |
-| `OPENROUTER_API_KEY` | Required when provider is `openrouter` |
-| `OPENROUTER_CHAT_MODEL` | Optional — must be a model that supports tool calling, see below |
+| `GEMINI_CHAT_MODEL` | Optional — pin the model id (defaults to `gemini-3.5-flash-lite`, the lightest tier, picked for its higher free-tier request quota) |
 | `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MODEL` | Used when provider is `ollama` |
 | `OLLAMA_EMBEDDING_MODEL` | Read by `get_embeddings_model()` — which nothing currently calls, since there's no vector store or RAG in the app. Effectively dead config, kept so the first person to add embeddings has a default |
 | `SERVICE_TOKEN` | Optional locally, required in deployment — must match the backend's `AI_SERVICE_TOKEN` |
-
-> **Picking an OpenRouter model:** three of the four endpoints use `with_structured_output()`, so the model must support tool calling. Most of OpenRouter's free models don't, and one that doesn't will break resume parsing, fit analysis and interview prep while cover letters keep working — a confusing half-broken state rather than a clean failure.
 
 **`frontend/.env.local`**
 

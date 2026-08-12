@@ -35,7 +35,7 @@ NestJS (backend/)            — the only service with a database connection
 FastAPI (ai-service/)        — stateless: no DB, no user accounts, just AI work
   │
   ▼
-An LLM provider (via LangChain/LangGraph) — Ollama, Gemini or OpenRouter,
+An LLM provider (via LangChain/LangGraph) — Ollama or Gemini,
                                             picked by the LLM_PROVIDER env var
 
 Supporting services (reachable from NestJS, not from the browser):
@@ -253,8 +253,8 @@ Because they have fundamentally different jobs and trust levels. NestJS
 owns authentication, authorization, and the database — it's the
 "backend of record." FastAPI is a stateless AI worker with no idea what
 a user or a database row is; it just transforms input into output via
-whichever LLM provider is configured (Ollama, Gemini or OpenRouter — one
-env var, `app/core/llm.py` is the only file that knows the difference).
+whichever LLM provider is configured (Ollama or Gemini — one env var,
+`app/core/llm.py` is the only file that knows the difference).
 Splitting them means the AI service can be scaled, redeployed, or
 even swapped for a different LLM stack without touching auth or data
 logic, and a bug in prompt engineering can't accidentally leak a SQL

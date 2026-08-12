@@ -16,7 +16,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env")
 
-    llm_provider: Literal["ollama", "gemini", "openrouter"] = "ollama"
+    llm_provider: Literal["ollama", "gemini"] = "ollama"
 
     # Shared secret NestJS must present on every call — see core/security.py
     # for why this exists at all. Optional: unset means "no check", which is
@@ -28,31 +28,13 @@ class Settings(BaseSettings):
     # Not required at all for local Ollama-only development.
     gemini_api_key: str | None = None
 
-    # Defaults to Google's moving "latest" alias, which is convenient but
-    # means the model under you can change without warning. Pin it to a
-    # dated id (e.g. gemini-2.5-flash) via GEMINI_CHAT_MODEL when you want
-    # reproducible behaviour — config change, no code change.
-    gemini_chat_model: str = "gemini-flash-latest"
-
-    # OpenRouter — an OpenAI-compatible gateway in front of many models.
-    # Only required when llm_provider="openrouter".
-    openrouter_api_key: str | None = None
-
-    # IMPORTANT when picking a model: three of this service's four
-    # endpoints use with_structured_output(), so the model MUST support
-    # tool/function calling — LangChain implements structured output over
-    # function calling for OpenAI-compatible providers. Many of
-    # OpenRouter's free models do not, and one without it fails resume
-    # parsing, fit analysis and interview prep while cover letters (plain
-    # text) still work — a confusing half-broken state that reads as a bug
-    # in our code rather than a bad model choice. Check that
-    # "supported_parameters" contains "tools" before changing this:
-    #   curl -s https://openrouter.ai/api/v1/models
-    #
-    # This default is verified to advertise tools. Note it advertises
-    # response_format but NOT structured_outputs, so with_structured_output
-    # must stay on its function-calling path rather than json_schema.
-    openrouter_chat_model: str = "google/gemma-4-31b-it:free"
+    # Pinned to the lightest Gemini tier rather than the moving "latest"
+    # alias: flash-lite carries the highest free-tier request quota of
+    # any Gemini model, which matters most here since resume extraction
+    # (services/resume_extraction.py) fires three concurrent calls per
+    # upload. Override via GEMINI_CHAT_MODEL — config change, no code
+    # change — if you ever want the heavier gemini-2.5-flash instead.
+    gemini_chat_model: str = "gemini-3.5-flash-lite"
 
     # Ollama config — only used when llm_provider="ollama". Defaults
     # assume `ollama serve` running locally with these models already
@@ -69,10 +51,6 @@ class Settings(BaseSettings):
         if self.llm_provider == "gemini" and not self.gemini_api_key:
             raise ValueError(
                 "GEMINI_API_KEY is required when LLM_PROVIDER=gemini"
-            )
-        if self.llm_provider == "openrouter" and not self.openrouter_api_key:
-            raise ValueError(
-                "OPENROUTER_API_KEY is required when LLM_PROVIDER=openrouter"
             )
         return self
 

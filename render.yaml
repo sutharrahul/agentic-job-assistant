@@ -97,26 +97,16 @@ services:
         value: "3.12.11"
 
       - key: LLM_PROVIDER
-        value: openrouter
+        value: gemini
 
-      # Pinned to a specific model, never a routing alias like
-      # "openrouter/free" — that picks a different model per request,
-      # which would destroy the determinism temperature=0 fit scoring
-      # depends on.
-      #
-      # This model is verified to advertise `tools` in its
-      # supported_parameters, which is non-negotiable: three of the four
-      # endpoints use with_structured_output(), and LangChain implements
-      # that over function calling for OpenAI-compatible providers. A
-      # model without tool support fails resume parsing, fit analysis and
-      # interview prep while cover letters keep working — a half-broken
-      # state that looks like a bug in our code rather than a bad model
-      # choice. Re-check before ever changing this:
-      #   curl -s https://openrouter.ai/api/v1/models
-      - key: OPENROUTER_CHAT_MODEL
-        value: google/gemma-4-31b-it:free
+      # Lightest Gemini tier, not the moving "latest" alias: flash-lite
+      # carries the highest free-tier request quota of any Gemini model,
+      # which matters most here since resume extraction fires three
+      # concurrent calls per upload (services/resume_extraction.py).
+      - key: GEMINI_CHAT_MODEL
+        value: gemini-3.5-flash-lite
 
-      - key: OPENROUTER_API_KEY
+      - key: GEMINI_API_KEY
         sync: false
 
       # Same value as the API service's AI_SERVICE_TOKEN, copied by Render
