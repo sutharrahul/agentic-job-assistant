@@ -2,7 +2,7 @@ import json
 
 from fastapi import APIRouter
 
-from app.core.llm import get_chat_model, structured_output_kwargs, with_llm_retry
+from app.core.llm import get_chat_model, with_llm_retry
 from app.schemas.fit import AnalyzeFitRequest, AnalyzeFitResponse
 
 router = APIRouter(tags=["fit"])
@@ -51,12 +51,8 @@ async def analyze_fit(payload: AnalyzeFitRequest) -> AnalyzeFitResponse:
     # Same pattern as resume extraction (services/resume_extraction.py):
     # the response schema is enforced by the model integration itself,
     # so we never hand-parse LLM JSON.
-    #
-    # structured_output_kwargs() overrides the method LangChain would
-    # otherwise auto-pick, but only for providers where that pick is
-    # known to be unreliable — see its docstring in core/llm.py.
     structured_model = with_llm_retry(
-        model.with_structured_output(AnalyzeFitResponse, **structured_output_kwargs())
+        model.with_structured_output(AnalyzeFitResponse)
     )
 
     # json.dumps rather than str(): the model sees clean JSON instead of

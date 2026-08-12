@@ -2,7 +2,7 @@ import asyncio
 
 from pydantic import BaseModel
 
-from app.core.llm import get_chat_model, structured_output_kwargs, with_llm_retry
+from app.core.llm import get_chat_model, with_llm_retry
 from app.schemas.resume import (
     EducationEntry,
     ExperienceEntry,
@@ -86,7 +86,7 @@ Resume text:
 async def extract_resume_data(resume_text: str) -> ParsedResumeData:
     # get_chat_model() returns whichever provider LLM_PROVIDER selects
     # (see app/core/llm.py) — this function has no idea whether it's
-    # talking to Ollama, Gemini, or OpenRouter, and doesn't need to.
+    # talking to Ollama or Gemini, and doesn't need to.
     #
     # temperature=0 asks the model to be as deterministic as possible —
     # appropriate here because this is an EXTRACTION task (pull out
@@ -97,20 +97,15 @@ async def extract_resume_data(resume_text: str) -> ParsedResumeData:
     # output — they're three independent reads of the same input text,
     # so there's no reason to pay for their latency one after another.
     model = get_chat_model(temperature=0)
-    kwargs = structured_output_kwargs()
 
     # with_llm_retry matters more here than at any other call site: these
     # three calls run concurrently against the same rate-limited pool, so
     # they're more likely to collide with each other's requests than a
     # single-call endpoint ever would be.
-    summary_skills_model = with_llm_retry(
-        model.with_structured_output(_SummarySkills, **kwargs)
-    )
-    experience_model = with_llm_retry(
-        model.with_structured_output(_Experience, **kwargs)
-    )
+    summary_skills_model = with_llm_retry(model.with_structured_output(_SummarySkills))
+    experience_model = with_llm_retry(model.with_structured_output(_Experience))
     education_projects_model = with_llm_retry(
-        model.with_structured_output(_EducationProjects, **kwargs)
+        model.with_structured_output(_EducationProjects)
     )
 
     summary_skills, experience, education_projects = await asyncio.gather(
