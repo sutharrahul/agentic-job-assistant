@@ -142,8 +142,14 @@ function ProgressPicker({
       <DropdownMenuTrigger
         render={
           <Button
-            variant={value === "NOT_STARTED" ? "outline" : "secondary"}
+            variant="outline"
             size="xs"
+            // Done is the one state worth spotting from across the list, so
+            // it gets the coral treatment; the other two stay neutral.
+            className={cn(
+              value === "COMPLETED" &&
+                "bg-purple-subtle text-purple-dark hover:bg-purple-subtle dark:bg-purple-subtle dark:text-purple-light dark:hover:bg-purple-subtle",
+            )}
           />
         }
       >

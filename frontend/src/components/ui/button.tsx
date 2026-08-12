@@ -9,8 +9,13 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        // Dark mode fills with surface-3 rather than a translucent tint:
+        // dark:bg-input/30 computed to ~3.6% white over a #1c1c1c card, so
+        // outline buttons — every dropdown trigger in the app among them —
+        // read as plain text instead of controls. A real step up the surface
+        // scale carries the affordance without needing a border.
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-transparent dark:bg-surface-3 dark:hover:bg-foreground/15 dark:aria-expanded:bg-foreground/15",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
