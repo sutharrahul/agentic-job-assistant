@@ -16,9 +16,15 @@ import type { ClerkJwtPayload } from '../auth/guards/clerk-auth.guard';
 import { ApplicationsService } from './applications.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
 import {
+  AddNoteDto,
   GenerateCoverLetterDto,
+  GenerateInterviewPrepDto,
   UpdateApplicationDto,
 } from './dto/update-application.dto';
+import {
+  CreateInterviewRoundDto,
+  UpdateInterviewRoundDto,
+} from './dto/interview-round.dto';
 
 // Guard ORDER matters: ClerkAuthGuard must run first so that
 // UserThrottlerGuard.getTracker() can read request.user and count per
@@ -46,7 +52,7 @@ export class ApplicationsController {
     return this.applicationsService.create(user.sub, dto);
   }
 
-  // One PATCH for status changes (kanban drag / dropdown), notes, and
+  // One PATCH for status changes (kanban drag / dropdown) and
   // cover-letter edits+approval — the DTO decides what's allowed.
   @Patch(':id')
   update(
@@ -60,6 +66,52 @@ export class ApplicationsController {
   @Delete(':id')
   remove(@Param('id') id: string, @CurrentUser() user: ClerkJwtPayload) {
     return this.applicationsService.remove(id, user.sub);
+  }
+
+  @Post(':id/notes')
+  addNote(
+    @Param('id') id: string,
+    @CurrentUser() user: ClerkJwtPayload,
+    @Body() dto: AddNoteDto,
+  ) {
+    return this.applicationsService.addNote(id, user.sub, dto.content);
+  }
+
+  @Delete(':id/notes/:noteId')
+  deleteNote(
+    @Param('id') id: string,
+    @Param('noteId') noteId: string,
+    @CurrentUser() user: ClerkJwtPayload,
+  ) {
+    return this.applicationsService.deleteNote(id, user.sub, noteId);
+  }
+
+  @Post(':id/interview-rounds')
+  createInterviewRound(
+    @Param('id') id: string,
+    @CurrentUser() user: ClerkJwtPayload,
+    @Body() dto: CreateInterviewRoundDto,
+  ) {
+    return this.applicationsService.createInterviewRound(id, user.sub, dto);
+  }
+
+  @Patch(':id/interview-rounds/:roundId')
+  updateInterviewRound(
+    @Param('id') id: string,
+    @Param('roundId') roundId: string,
+    @CurrentUser() user: ClerkJwtPayload,
+    @Body() dto: UpdateInterviewRoundDto,
+  ) {
+    return this.applicationsService.updateInterviewRound(id, user.sub, roundId, dto);
+  }
+
+  @Delete(':id/interview-rounds/:roundId')
+  deleteInterviewRound(
+    @Param('id') id: string,
+    @Param('roundId') roundId: string,
+    @CurrentUser() user: ClerkJwtPayload,
+  ) {
+    return this.applicationsService.deleteInterviewRound(id, user.sub, roundId);
   }
 
   // --- AI actions (NestJS orchestrates, FastAPI computes) -------------
@@ -99,7 +151,9 @@ export class ApplicationsController {
     return this.applicationsService.generateCoverLetter(id, user.sub, dto.tone);
   }
 
-  // Costs two LLM calls, not one — it's a two-node graph.
+  // Costs two LLM calls, not one — it's a two-node graph. Which is why the
+  // service short-circuits on an application that already has a prep pack:
+  // without `regenerate: true` in the body this route is free to call.
   @Throttle({
     short: { ttl: minutes(1), limit: 10 },
     daily: { ttl: hours(24), limit: 60 },
@@ -108,7 +162,12 @@ export class ApplicationsController {
   generateInterviewPrep(
     @Param('id') id: string,
     @CurrentUser() user: ClerkJwtPayload,
+    @Body() dto: GenerateInterviewPrepDto,
   ) {
-    return this.applicationsService.generateInterviewPrep(id, user.sub);
+    return this.applicationsService.generateInterviewPrep(
+      id,
+      user.sub,
+      dto.regenerate ?? false,
+    );
   }
 }

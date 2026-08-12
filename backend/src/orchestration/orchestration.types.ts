@@ -57,14 +57,33 @@ export interface GenerateCoverLetterResponse {
   cover_letter: string;
 }
 
-export interface InterviewQuestion {
+export interface StudyTopic {
+  topic: string;
+  category: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+  difficulty: 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+  relevance: string;
+}
+
+export interface PrepQuestion {
   question: string;
+  // The resume/job line the question was drawn from — the whole point of
+  // the prep pack is that every question is traceable to something real.
+  grounded_in: string;
   talking_points: string[];
 }
 
+// The handful of themes to spend the remaining prep time on, as opposed to
+// StudyTopic's per-subject checklist: fewer, broader, and each one carries
+// its own justification.
+export interface FocusArea {
+  area: string;
+  why: string;
+  priority: 'HIGH' | 'MEDIUM' | 'LOW';
+}
+
 export interface InterviewPrepResponse {
-  focus_areas: string[];
-  technical_questions: InterviewQuestion[];
-  behavioral_questions: InterviewQuestion[];
-  gaps_to_prepare: string[];
+  study_topics: StudyTopic[];
+  questions: PrepQuestion[];
+  focus_areas: FocusArea[];
 }

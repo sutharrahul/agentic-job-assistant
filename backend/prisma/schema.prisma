@@ -27,6 +27,27 @@ enum ResumeStatus {
   FAILED
 }
 
+// A real enum because the code branches on it: the debrief fields only
+// appear once a round is COMPLETED, and the kanban countdown only counts
+// SCHEDULED ones. InterviewRound.type/mode are deliberately NOT enums —
+// see the note on those fields.
+enum InterviewRoundStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+// Deliberately NOT merged into InterviewRoundStatus, and not derivable from
+// it: status says whether the MEETING happened (scheduled / completed /
+// cancelled), result says how it TURNED OUT (passed / failed / still
+// waiting to hear). A COMPLETED round can sit on WAITING for a week, and a
+// CANCELLED one can still end in FAILED.
+enum InterviewRoundResult {
+  PASSED
+  FAILED
+  WAITING
+}
+
 // User.id has NO @default(uuid()) — on purpose. Clerk already assigns
 // every signed-up user an id (the JWT's `sub` claim, e.g. "user_2abc…").
 // This id must be set to THAT SAME value when the row is created, so a
@@ -75,7 +96,7 @@ model Application {
   jobDescription   String
   location         String?
   deadline         DateTime?
-  notes            String            @default("")
+  notes            Json              @default("[]")
   status           ApplicationStatus @default(APPLIED)
   // --- Status-specific details ---------------------------------------
   // All optional: an application only ever fills the group matching its
@@ -83,8 +104,6 @@ model Application {
   // Flat nullable columns (not one Json blob) so each field stays
   // individually typed and validated in the DTO.
   appliedVia       String? // e.g. "LinkedIn", "Referral — Priya", "Company site"
-  interviewRound   String? // e.g. "Round 2 — Technical"
-  interviewAt      DateTime? // next scheduled interview
   offeredCtc       String? // free text — "₹14 LPA", "$90k + equity" formats vary
   joiningDate      DateTime?
   rejectionStage   String? // e.g. "After technical round"
@@ -100,9 +119,84 @@ model Application {
   // Human-in-the-loop flag: false when generated or after any manual
   // edit; only true once the user explicitly clicks Approve.
   coverLetterApproved Boolean        @default(false)
-  // { focusAreas, technicalQuestions: [{question, talkingPoints}],
-  //   behavioralQuestions: [...], gapsToPrepare } from /interview-prep.
+  // { studyTopics: [{topic, category, priority, difficulty, relevance}],
+  //   questions: [{question, groundedIn, talkingPoints}],
+  //   focusAreas: [{area, why, priority}], generatedAt }
+  //   from /interview-prep (snake_case mapped by NestJS before persisting).
+  // Written ONCE and read back forever after — the service refuses to call
+  // the AI again while this is non-null unless the user asks to regenerate,
+  // so stage changes and page reloads cost nothing.
   interviewPrep    Json?
+  // The user's own Not Started / In Progress / Completed marker per study
+  // topic: a flat map of "<category>::<topic>" -> NOT_STARTED | IN_PROGRESS
+  // | COMPLETED.
+  //
+  // A SEPARATE column from interviewPrep, not a field inside it, because
+  // interviewPrep is AI-generated and overwritten wholesale on Regenerate —
+  // progress living inside it would be silently wiped every time the user
+  // regenerates.
+  //
+  // Keyed by category+topic rather than by array index so progress survives
+  // a regenerate that reorders or partially changes the topic list; keys for
+  // topics that no longer exist are simply ignored on read.
+  studyProgress    Json              @default("{}")
+  // Replaces the old single interviewRound/interviewAt pair, which could
+  // only hold ONE round — every new round overwrote the last and the
+  // history was lost. Interviewing is multi-round by nature.
+  interviewRounds  InterviewRound[]
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
+}
+
+model InterviewRound {
+  id            String      @id @default(uuid())
+  applicationId String
+  // Cascade is required, not stylistic: this is the first relation where
+  // Application is the PARENT, and Prisma's implicit default for a
+  // mandatory relation is RESTRICT — without it, deleting an application
+  // that has rounds throws an unhandled FK violation (P2003) as a raw 500.
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  // type and mode are validated STRINGS, not DB enums — same precedent as
+  // Application.coverLetterTone + COVER_LETTER_TONES + @IsIn(). A Postgres
+  // enum can only grow via ALTER TYPE in a new migration, and round types
+  // vary wildly between companies ("Bar raiser", "Case study"), which is
+  // exactly why the column this replaces was free text. BOTH are now fully
+  // open: mode used to be closed to PHONE/VIDEO/ONSITE at the DTO layer,
+  // but the UI offers Online / In-person / Phone / Custom, and a custom
+  // mode is stored verbatim — same as type.
+  type          String
+  mode          String
+  // Just a running count assigned at creation ((existing rounds) + 1), and
+  // editable afterwards. type carries the round's NAME; this is the "round
+  // 2 of 4" ordinal the user thinks in.
+  roundNumber   Int?
+  scheduledAt   DateTime
+  interviewer   String?
+  status        InterviewRoundStatus @default(SCHEDULED)
+  // Null until there's news — a scheduled round has no outcome yet. See
+  // the enum's comment for why this is separate from status.
+  result        InterviewRoundResult?
+
+  // --- Debrief — filled in after the round actually happens -----------
+  selfRating     Int?
+  questionsAsked String[] @default([])
+  // Free-text reflection is deliberately just these two boxes. The earlier
+  // whatWentWell/whatToImprove pair overlapped personalNotes so heavily that
+  // four boxes only spread one debrief thinly across them; selfRating stays
+  // because a 1–5 score is not redundant with prose.
+  //
+  // What the INTERVIEWER said, as opposed to the candidate's own notes.
+  interviewerFeedback String?
+  // The candidate's private scratchpad for this round.
+  personalNotes       String?
+
+  // --- Follow-up -------------------------------------------------------
+  thankYouNoteSent   Boolean   @default(false)
+  expectedResponseBy DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([applicationId])
 }

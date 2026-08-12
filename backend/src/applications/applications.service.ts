@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrchestrationService } from '../orchestration/orchestration.service';
 import { CreateApplicationDto } from './dto/create-application.dto';
@@ -10,6 +11,22 @@ import {
   CoverLetterTone,
   UpdateApplicationDto,
 } from './dto/update-application.dto';
+import {
+  CreateInterviewRoundDto,
+  UpdateInterviewRoundDto,
+} from './dto/interview-round.dto';
+
+// EVERY query that returns an application must carry this — reads and
+// mutations alike. The frontend's Application type declares interviewRounds
+// non-optional and replaces its whole app object with whatever a mutation
+// returns, so an update that omits the include hands back a row whose
+// interviewRounds is `undefined`, and the detail page's
+// `app.interviewRounds.length` gate throws on the next render. Verified the
+// hard way: PATCH /applications/:id and POST :id/notes both shipped without
+// it and would have crashed the page after any status change or new note.
+const WITH_ROUNDS = {
+  interviewRounds: { orderBy: { scheduledAt: 'asc' } },
+} as const;
 
 @Injectable()
 export class ApplicationsService {
@@ -22,6 +39,7 @@ export class ApplicationsService {
     return this.prisma.application.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
+      include: WITH_ROUNDS,
     });
   }
 
@@ -30,6 +48,7 @@ export class ApplicationsService {
   async findOne(id: string, userId: string) {
     const application = await this.prisma.application.findFirst({
       where: { id, userId },
+      include: WITH_ROUNDS,
     });
     if (!application) {
       throw new NotFoundException('Application not found');
@@ -47,6 +66,10 @@ export class ApplicationsService {
         location: dto.location,
         deadline: dto.deadline ? new Date(dto.deadline) : undefined,
       },
+      // Always an empty array here, but the frontend's Application type
+      // declares interviewRounds non-optional — returning a row without it
+      // would make this the one endpoint whose shape doesn't match.
+      include: WITH_ROUNDS,
     });
   }
 
@@ -54,14 +77,14 @@ export class ApplicationsService {
     await this.findOne(id, userId);
     // Date fields arrive as strings in the JSON body but Prisma wants
     // Date objects — and "" means "the user cleared the input" (-> null).
-    const { interviewAt, joiningDate, ...rest } = dto;
+    const { joiningDate, ...rest } = dto;
     return this.prisma.application.update({
       where: { id },
       data: {
         ...rest,
-        interviewAt: this.toDateOrClear(interviewAt),
         joiningDate: this.toDateOrClear(joiningDate),
       },
+          include: WITH_ROUNDS,
     });
   }
 
@@ -76,6 +99,105 @@ export class ApplicationsService {
     await this.findOne(id, userId);
     await this.prisma.application.delete({ where: { id } });
     return { deleted: true };
+  }
+
+  async addNote(id: string, userId: string, content: string) {
+    const application = await this.findOne(id, userId);
+    // Json is loosely typed on the Prisma side — guard against a
+    // non-array value ever reaching .push/.filter below.
+    const notes = Array.isArray(application.notes) ? application.notes : [];
+    notes.push({ id: randomUUID(), content, createdAt: new Date().toISOString() });
+    return this.prisma.application.update({
+      where: { id },
+      data: { notes },
+      include: WITH_ROUNDS,
+    });
+  }
+
+  async deleteNote(id: string, userId: string, noteId: string) {
+    const application = await this.findOne(id, userId);
+    const notes = Array.isArray(application.notes) ? application.notes : [];
+    // No error if noteId isn't found — filtering is naturally idempotent.
+    const remaining = notes.filter(
+      (note) => (note as { id?: string })?.id !== noteId,
+    );
+    return this.prisma.application.update({
+      where: { id },
+      data: { notes: remaining },
+      include: WITH_ROUNDS,
+    });
+  }
+
+  // --- Interview rounds -------------------------------------------------
+
+  async createInterviewRound(
+    applicationId: string,
+    userId: string,
+    dto: CreateInterviewRoundDto,
+  ) {
+    await this.findOne(applicationId, userId);
+    // Rounds are a real-world log, never an AI input or output — nothing on
+    // this path (or the update/delete ones below) talks to the AI service.
+    // The prep pack is generated once at the APPLICATION level and shared
+    // by every round.
+    //
+    // The number is stamped once at creation rather than derived on read,
+    // so deleting round 2 doesn't silently renumber round 3 out from under
+    // a user who has already been calling it "round 3".
+    const roundNumber =
+      dto.roundNumber ??
+      (await this.prisma.interviewRound.count({ where: { applicationId } })) + 1;
+    await this.prisma.interviewRound.create({
+      data: {
+        applicationId,
+        ...dto,
+        roundNumber,
+        scheduledAt: new Date(dto.scheduledAt),
+      },
+    });
+    return this.findOne(applicationId, userId);
+  }
+
+  async updateInterviewRound(
+    applicationId: string,
+    userId: string,
+    roundId: string,
+    dto: UpdateInterviewRoundDto,
+  ) {
+    await this.findOne(applicationId, userId);
+    // findOne above only proves the APPLICATION is the caller's. Rounds are
+    // independently addressable by id, so without this second check a
+    // caller could PATCH a round under a DIFFERENT applicationId (even one
+    // of their own other applications) just by passing its id.
+    const round = await this.prisma.interviewRound.findFirst({
+      where: { id: roundId, applicationId },
+    });
+    if (!round) {
+      throw new NotFoundException('Interview round not found');
+    }
+    const { scheduledAt, expectedResponseBy, ...rest } = dto;
+    await this.prisma.interviewRound.update({
+      where: { id: roundId },
+      data: {
+        ...rest,
+        scheduledAt: scheduledAt !== undefined ? new Date(scheduledAt) : undefined,
+        expectedResponseBy: this.toDateOrClear(expectedResponseBy),
+      },
+    });
+    return this.findOne(applicationId, userId);
+  }
+
+  async deleteInterviewRound(applicationId: string, userId: string, roundId: string) {
+    await this.findOne(applicationId, userId);
+    // Same double-scoping as updateInterviewRound above — see comment there.
+    const round = await this.prisma.interviewRound.findFirst({
+      where: { id: roundId, applicationId },
+    });
+    if (!round) {
+      throw new NotFoundException('Interview round not found');
+    }
+    await this.prisma.interviewRound.delete({ where: { id: roundId } });
+    return this.findOne(applicationId, userId);
   }
 
   // --- AI actions -----------------------------------------------------
@@ -107,6 +229,7 @@ export class ApplicationsService {
           suggestions: result.suggestions,
         },
       },
+      include: WITH_ROUNDS,
     });
   }
 
@@ -131,11 +254,21 @@ export class ApplicationsService {
         // click is the human-in-the-loop step this app is built around.
         coverLetterApproved: false,
       },
+      include: WITH_ROUNDS,
     });
   }
 
-  async generateInterviewPrep(id: string, userId: string) {
+  // Prep is generated ONCE per application and then persisted: reopening
+  // the page, moving the application between stages (Applied -> Interview
+  // -> Applied -> Interview) or adding an interview round all read the
+  // stored copy back. The guard below is what makes that true — without
+  // it every one of those paths would spend two more LLM calls on an
+  // answer we already have. Only an explicit user "Regenerate" pays again.
+  async generateInterviewPrep(id: string, userId: string, regenerate = false) {
     const application = await this.findOne(id, userId);
+    if (application.interviewPrep && !regenerate) {
+      return application;
+    }
     const resume = await this.getResumeForApplication(userId, application);
 
     const result = await this.orchestrationService.generateInterviewPrep({
@@ -149,18 +282,29 @@ export class ApplicationsService {
       data: {
         resumeId: resume.id,
         interviewPrep: {
-          focusAreas: result.focus_areas,
-          technicalQuestions: result.technical_questions.map((q) => ({
+          studyTopics: result.study_topics.map((topic) => ({
+            topic: topic.topic,
+            category: topic.category,
+            priority: topic.priority,
+            difficulty: topic.difficulty,
+            relevance: topic.relevance,
+          })),
+          questions: result.questions.map((q) => ({
             question: q.question,
+            groundedIn: q.grounded_in,
             talkingPoints: q.talking_points,
           })),
-          behavioralQuestions: result.behavioral_questions.map((q) => ({
-            question: q.question,
-            talkingPoints: q.talking_points,
+          focusAreas: result.focus_areas.map((focus) => ({
+            area: focus.area,
+            why: focus.why,
+            priority: focus.priority,
           })),
-          gapsToPrepare: result.gaps_to_prepare,
+          // Stamped at persist time so the UI can show how old the pack is
+          // and so "has this been regenerated?" is answerable from the row.
+          generatedAt: new Date().toISOString(),
         },
       },
+      include: WITH_ROUNDS,
     });
   }
 
