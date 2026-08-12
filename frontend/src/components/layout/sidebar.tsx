@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileText, KanbanSquare, LayoutDashboard, Menu, Plus } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
 import { cn } from "@/lib/utils";
 import { ModeToggle } from "@/components/mode-toggle";
+import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -84,7 +84,7 @@ export function MobileTopBar() {
       </Link>
       <div className="flex items-center gap-2">
         <ModeToggle />
-        <UserButton />
+        <UserMenu />
         <Sheet>
           <SheetTrigger render={<Button variant="outline" size="icon" />}>
             <Menu className="size-4" />

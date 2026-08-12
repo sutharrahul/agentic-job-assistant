@@ -10,8 +10,13 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
+        // dark:bg-surface-3: --secondary is nearly the same shade as
+        // --card in dark mode (both close to near-black), so a plain
+        // bg-secondary pill was all but invisible sitting on a card.
+        // surface-3 is two steps up the app's own surface scale — a
+        // deliberately lighter, visibly distinct chip instead.
         secondary:
-          "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
+          "bg-secondary text-secondary-foreground dark:bg-surface-3 [a]:hover:bg-secondary/80 dark:[a]:hover:bg-surface-3/80",
         destructive:
           "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:focus-visible:ring-destructive/40 [a]:hover:bg-destructive/20",
         outline:

@@ -136,7 +136,7 @@ export function FitAnalysisCard({
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {analysis.matchedSkills.map((skill) => (
-                  <Badge key={skill} variant="secondary">
+                  <Badge key={skill} variant="warm">
                     <Check data-icon="inline-start" />
                     {skill}
                   </Badge>

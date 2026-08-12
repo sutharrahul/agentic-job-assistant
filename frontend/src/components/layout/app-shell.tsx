@@ -3,7 +3,7 @@ import { UserSync } from "@/components/user-sync";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       {/* Renders nothing — makes sure this user exists in our own
           database before any page below can reference them. See
           components/user-sync.tsx. */}
@@ -11,7 +11,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         <MobileTopBar />
-        <main className="flex min-w-0 flex-1 flex-col">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col overflow-y-auto">{children}</main>
       </div>
     </div>
   );

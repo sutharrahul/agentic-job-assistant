@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
 import { ModeToggle } from "@/components/mode-toggle";
+import { UserMenu } from "@/components/layout/user-menu";
 
 // Shared header for every dashboard-group page: a mono breadcrumb trail,
 // a large heading, and an optional right-side action (a button, a status
@@ -18,7 +17,7 @@ export function PageHeading({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b px-4 py-5 sm:px-6 lg:px-8">
+    <div className="sticky top-0 z-10 flex flex-wrap items-start justify-between gap-4 border-b bg-background px-4 py-5 sm:px-6 lg:px-8">
       <div>
         <p className="font-label text-xs font-bold tracking-widest text-muted-foreground uppercase">
           {crumbs.join(" / ")}
@@ -37,15 +36,7 @@ export function PageHeading({
           <ModeToggle />
         </span>
         <span className="max-lg:hidden">
-          <UserButton>
-            <UserButton.MenuItems>
-              <UserButton.Link
-                label="Landing page"
-                labelIcon={<Sparkles className="size-4" />}
-                href="/"
-              />
-            </UserButton.MenuItems>
-          </UserButton>
+          <UserMenu />
         </span>
       </div>
     </div>
