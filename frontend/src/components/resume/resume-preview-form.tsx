@@ -10,6 +10,7 @@ import {
   ProjectEntry,
   Resume,
 } from "@/lib/types/resume";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +41,13 @@ const emptyProject: ProjectEntry = {
   description: "",
   technologies: [],
 };
+
+// Visible proof the human-in-the-loop step actually happened — which is the
+// whole point of this screen, and otherwise invisible once saved.
+function EditedMark({ on }: { on: boolean }) {
+  if (!on) return null;
+  return <Badge variant="warm">edited</Badge>;
+}
 
 export function ResumePreviewForm({
   resume,
@@ -83,10 +91,43 @@ export function ResumePreviewForm({
     }
   }
 
+  // Diffed against the props, which still hold exactly what the parser
+  // returned — so "edited" means the user actually corrected the AI, not
+  // merely that the field has content.
+  const original = resume.parsedData;
+  const edited = {
+    summary: (original?.summary ?? "") !== (data.summary ?? ""),
+    skills: JSON.stringify(original?.skills ?? []) !== JSON.stringify(data.skills),
+    experience:
+      JSON.stringify(original?.experience ?? []) !== JSON.stringify(data.experience),
+    education:
+      JSON.stringify(original?.education ?? []) !== JSON.stringify(data.education),
+    projects:
+      JSON.stringify(original?.projects ?? []) !== JSON.stringify(data.projects),
+  };
+
   return (
     <div className="space-y-6">
+      {/* This is NOT the uploaded file — it's the structured data every AI
+          feature reads (fit score, cover letter, interview prep all send
+          parsedData and nothing else). Saying so plainly is the difference
+          between "pointless data entry" and "correcting what the AI knows". */}
+      <div className="space-y-1.5 rounded-2xl bg-card p-6 shadow-card">
+        <h2 className="font-heading text-base font-medium">
+          What the AI understood from your resume
+        </h2>
+        <p className="text-sm text-muted-foreground">
+          Everything below was extracted automatically. Correcting it improves
+          your fit scores, cover letters and interview questions — your
+          uploaded file is never changed.
+        </p>
+      </div>
+
       <div className="space-y-3 rounded-2xl bg-card p-6 shadow-card">
-        <h2 className="font-heading text-base font-medium">Summary</h2>
+        <h2 className="font-heading flex items-center gap-2 text-base font-medium">
+          Summary
+          <EditedMark on={edited.summary} />
+        </h2>
         <Textarea
           value={data.summary ?? ""}
           onChange={(e) => setData({ ...data, summary: e.target.value })}
@@ -98,8 +139,9 @@ export function ResumePreviewForm({
           sections used to be hidden behind a click, which is what made the
           page feel empty — the content was there, just not on screen. */}
       <section className="rounded-2xl bg-card p-6 shadow-card">
-        <h2 className="font-heading mb-4 text-base font-medium">
+        <h2 className="font-heading mb-4 flex items-center gap-2 text-base font-medium">
           Skills <span className="text-muted-foreground">· {data.skills.length}</span>
+          <EditedMark on={edited.skills} />
         </h2>
         <TagInput
           value={data.skills}
@@ -109,8 +151,9 @@ export function ResumePreviewForm({
       </section>
 
       <section className="space-y-4 rounded-2xl bg-card p-6 shadow-card">
-        <h2 className="font-heading text-base font-medium">
+        <h2 className="font-heading flex items-center gap-2 text-base font-medium">
           Experience <span className="text-muted-foreground">· {data.experience.length}</span>
+          <EditedMark on={edited.experience} />
         </h2>
           {data.experience.map((entry, index) => (
             <div key={index} className={entryClassName}>
@@ -195,8 +238,9 @@ export function ResumePreviewForm({
       </section>
 
       <section className="space-y-4 rounded-2xl bg-card p-6 shadow-card">
-        <h2 className="font-heading text-base font-medium">
+        <h2 className="font-heading flex items-center gap-2 text-base font-medium">
           Education <span className="text-muted-foreground">· {data.education.length}</span>
+          <EditedMark on={edited.education} />
         </h2>
           {data.education.map((entry, index) => (
             <div key={index} className={entryClassName}>
@@ -272,8 +316,9 @@ export function ResumePreviewForm({
       </section>
 
       <section className="space-y-4 rounded-2xl bg-card p-6 shadow-card">
-        <h2 className="font-heading text-base font-medium">
+        <h2 className="font-heading flex items-center gap-2 text-base font-medium">
           Projects <span className="text-muted-foreground">· {data.projects.length}</span>
+          <EditedMark on={edited.projects} />
         </h2>
           {data.projects.map((entry, index) => (
             <div key={index} className={entryClassName}>
