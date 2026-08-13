@@ -25,8 +25,8 @@ export type CoverLetterTone = (typeof COVER_LETTER_TONES)[number];
 // dedicated /notes endpoints below.
 export class UpdateApplicationDto {
   // @IsEnum against the real Prisma enum closes the "status: banana"
-  // gap called out in WALKTHROUGH.md — invalid values are now a clean
-  // 400 from the pipe instead of a raw Prisma error at the DB.
+  // gap — invalid values are now a clean 400 from the pipe instead of a
+  // raw Prisma error at the DB.
   @IsOptional()
   @IsEnum(ApplicationStatus)
   status?: ApplicationStatus;

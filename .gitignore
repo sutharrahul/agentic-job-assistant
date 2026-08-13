@@ -58,3 +58,10 @@ AGENTS.md
 # cannot catch src/components/applications/interview-prep-card.tsx.
 interview-prep.md
 /interview-prep*.md
+
+# docs/WALKTHROUGH.md is the same kind of thing under a neutral name: it
+# is written to be read before an interview, and §5 is a list of this
+# codebase's weak spots. Kept on disk, untracked. It was tracked until
+# Aug 2026, so it is still readable in this repo's history — see the note
+# in the commit that removed it.
+/docs/WALKTHROUGH.md
