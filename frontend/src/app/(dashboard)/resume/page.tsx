@@ -106,36 +106,41 @@ export default function ResumePage() {
     <div>
       <PageHeading crumbs={["Workspace", "Resume"]} title="Resume" />
 
-      <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
-        {resume?.status === "FAILED" && (
-          <p className="text-sm text-destructive">
-            We couldn&apos;t parse that resume. Try uploading it again.
-          </p>
-        )}
+      {/* Two columns from lg: up — the file card is small and static, so
+          pinning it to a narrow rail hands the rest of a wide screen to the
+          resume itself instead of leaving margins. Matches the max-w-6xl
+          the application detail page already uses. */}
+      <div className="mx-auto grid max-w-6xl gap-6 p-4 sm:p-6 lg:grid-cols-[280px_1fr] lg:p-8">
+        <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+          {resume?.status === "FAILED" && (
+            <p className="text-sm text-destructive">
+              We couldn&apos;t parse that resume. Try uploading it again.
+            </p>
+          )}
 
-        {previewResume && (
-          <div className="flex items-center gap-4 rounded-2xl bg-card p-5 shadow-card">
-            <span className="flex shrink-0 items-center justify-center rounded-xl bg-purple-subtle p-2.5 text-purple-dark">
-              <FileText className="size-5" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-heading truncate font-semibold">
-                {previewResume.fileName}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {previewResume.status === "CONFIRMED" ? "Confirmed" : "Parsed"}{" "}
-                ·{" "}
-                {new Date(previewResume.createdAt).toLocaleDateString(
-                  undefined,
-                  { month: "short", day: "numeric", year: "numeric" },
-                )}
-              </p>
+          {previewResume && (
+            <div className="space-y-3 rounded-2xl bg-card p-5 shadow-card">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-purple-subtle text-purple-dark">
+                <FileText className="size-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="font-heading truncate font-semibold">
+                  {previewResume.fileName}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {previewResume.status === "CONFIRMED" ? "Confirmed" : "Parsed"}{" "}
+                  ·{" "}
+                  {new Date(previewResume.createdAt).toLocaleDateString(
+                    undefined,
+                    { month: "short", day: "numeric", year: "numeric" },
+                  )}
+                </p>
+              </div>
+              <Button variant="outline" onClick={() => setIsReplacing(true)}>
+                Replace file
+              </Button>
             </div>
-            <Button variant="outline" onClick={() => setIsReplacing(true)}>
-              Replace file
-            </Button>
-          </div>
-        )}
+          )}
 
         {showUploadForm && (
           <div className="space-y-3">
@@ -160,15 +165,18 @@ export default function ResumePage() {
           </p>
         )}
 
-        {previewResume && (
-          <ResumePreviewForm resume={previewResume} onConfirmed={setResume} />
-        )}
+          {!isReplacing && resume?.status === "CONFIRMED" && (
+            <p className="text-sm text-muted-foreground">
+              Saved as your base resume.
+            </p>
+          )}
+        </div>
 
-        {!isReplacing && resume?.status === "CONFIRMED" && (
-          <p className="text-sm text-muted-foreground">
-            Saved as your base resume.
-          </p>
-        )}
+        <div className="min-w-0">
+          {previewResume && (
+            <ResumePreviewForm resume={previewResume} onConfirmed={setResume} />
+          )}
+        </div>
       </div>
     </div>
   );

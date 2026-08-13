@@ -50,7 +50,7 @@ export default function NewApplicationPage() {
     <div>
       <PageHeading crumbs={["Workspace", "New application"]} title="New application" />
 
-      <div className="mx-auto w-full max-w-3xl p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
         <form onSubmit={handleSubmit}>
           <div className="rounded-2xl bg-card p-6 shadow-card sm:p-8">
             <p className="font-label text-xs font-bold tracking-widest text-muted-foreground uppercase">
