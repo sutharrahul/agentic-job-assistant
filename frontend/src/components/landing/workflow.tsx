@@ -4,47 +4,56 @@ import {
   ClipboardPaste,
   Gauge,
   PenLine,
-  ListChecks,
-  KanbanSquare,
+  GraduationCap,
+  CalendarClock,
 } from "lucide-react";
 import { Reveal } from "@/components/landing/reveal";
 import { SectionHeading } from "@/components/landing/section-heading";
 
+// Mirrors the flow the app actually supports today. The original list was
+// written before interview prep and round tracking existed and stopped at
+// "move the card to Offer", which is now the middle of the story rather
+// than the end.
 const STEPS = [
   {
     icon: Upload,
-    title: "Upload Resume",
-    description: "Drop in your existing resume as a PDF or DOCX.",
+    title: "Upload your resume",
+    description: "Drop in a PDF or DOCX. It's parsed once and reused everywhere.",
   },
   {
     icon: FileSearch,
-    title: "AI Resume Parsing",
-    description: "AI extracts your skills, experience, and education automatically.",
+    title: "Correct what the AI read",
+    description:
+      "Fix anything the parser got wrong — this profile is what every later step is graded against, not the file itself.",
   },
   {
     icon: ClipboardPaste,
-    title: "Paste Job Description",
-    description: "Paste the listing you're applying to — no copy-paste gymnastics.",
+    title: "Add a job",
+    description: "Paste the description as it appears on the listing.",
   },
   {
     icon: Gauge,
-    title: "Fit Analysis",
-    description: "Get a fit score plus matched and missing skills at a glance.",
+    title: "See where you stand",
+    description:
+      "A fit score with the skills you match, the ones you're missing, and concrete edits to close the gap.",
   },
   {
     icon: PenLine,
-    title: "Generate Cover Letter",
-    description: "AI drafts a tailored cover letter in your preferred tone.",
+    title: "Draft a cover letter",
+    description:
+      "Grounded in your resume, in the tone you pick. Editable inline, and nothing counts as approved until you say so.",
   },
   {
-    icon: ListChecks,
-    title: "Review & Edit",
-    description: "Read everything, edit inline, and approve before anything is saved.",
+    icon: GraduationCap,
+    title: "Prepare for the interview",
+    description:
+      "Study topics drawn from the job, plus the questions an interviewer would ask about your own projects. Generated once, then yours to revisit.",
   },
   {
-    icon: KanbanSquare,
-    title: "Track Application",
-    description: "Move it across your Kanban board from Applied to Offer.",
+    icon: CalendarClock,
+    title: "Track every round to the outcome",
+    description:
+      "Schedule rounds, record the questions you were actually asked, log feedback and results — from applied through to the offer.",
   },
 ];
 

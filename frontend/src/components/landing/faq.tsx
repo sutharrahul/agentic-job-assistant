@@ -27,11 +27,6 @@ const FAQS = [
     answer:
       "Yes, every generated cover letter is fully editable inline before you approve it.",
   },
-  {
-    question: "Which AI model powers this?",
-    answer:
-      "The AI pipeline is built on Google's Gemini models, orchestrated through a multi-agent LangGraph workflow.",
-  },
 ];
 
 export function FAQ() {

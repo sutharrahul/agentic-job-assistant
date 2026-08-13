@@ -8,7 +8,7 @@ export const GITHUB_URL = "https://github.com/sutharrahul/agentic-job-assistant"
 // here were all href="#" placeholders promising pages that don't exist.
 const FOOTER_LINKS = {
   Product: [
-    { label: "Features", href: "#features" },
+    { label: "Dashboard", href: "#dashboard-preview" },
     { label: "How it works", href: "#workflow" },
     { label: "FAQ", href: "#faq" },
   ],
