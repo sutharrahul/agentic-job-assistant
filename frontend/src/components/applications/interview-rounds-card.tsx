@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, ChevronDown, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   Accordion,
@@ -32,7 +32,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { TagInput } from "@/components/tag-input";
 import {
   Application,
   InterviewRound,
@@ -224,6 +223,70 @@ function ModePicker({
         <DropdownMenuItem onClick={onCustom}>Custom…</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+// Deliberately not TagInput: that renders chips, which suit short skill
+// names but not interview questions — a real question is a sentence, and a
+// row of sentence-length pills wraps into an unreadable block. A numbered
+// list also matches how the prep pack lists its own questions.
+function QuestionsAsked({
+  value,
+  onChange,
+}: {
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [draft, setDraft] = useState("");
+
+  function add() {
+    const q = draft.trim();
+    if (q && !value.includes(q)) onChange([...value, q]);
+    setDraft("");
+  }
+
+  return (
+    <div className="space-y-2">
+      {value.length > 0 && (
+        <ol className="space-y-1.5">
+          {value.map((q, index) => (
+            <li
+              key={q}
+              className="flex items-start gap-2 rounded-lg border px-3 py-2 text-sm"
+            >
+              <span className="font-label shrink-0 text-xs text-muted-foreground">
+                {index + 1}.
+              </span>
+              <span className="min-w-0 flex-1 break-words">{q}</span>
+              <button
+                type="button"
+                onClick={() => onChange(value.filter((x) => x !== q))}
+                className="shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+              >
+                <X className="size-3.5" />
+                <span className="sr-only">Remove question</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <Input
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={add}
+        onKeyDown={(e) => {
+          // Enter only — a comma is normal punctuation inside a question,
+          // unlike in the tag input this replaced.
+          if (e.key === "Enter") {
+            e.preventDefault();
+            add();
+          } else if (e.key === "Backspace" && draft === "" && value.length > 0) {
+            onChange(value.slice(0, -1));
+          }
+        }}
+        placeholder="Type a question and press Enter"
+      />
+    </div>
   );
 }
 
@@ -595,10 +658,9 @@ function RoundEditor({
           </div>
           <div className="space-y-2">
             <Label>Questions they actually asked</Label>
-            <TagInput
+            <QuestionsAsked
               value={questionsAsked}
               onChange={setQuestionsAsked}
-              placeholder="Type a question and press Enter"
             />
           </div>
           <div className="space-y-2">
@@ -721,7 +783,10 @@ export function InterviewRoundsCard({
                     )}
                   </span>
                 </AccordionTrigger>
-                <AccordionContent>
+                {/* px-1 pb-1: AccordionContent needs overflow-hidden for its
+                    collapse animation, which clips the focus ring off any
+                    input sitting flush against its edge. */}
+                <AccordionContent className="px-1 pb-1">
                   <RoundEditor app={app} round={round} onUpdated={onUpdated} />
                 </AccordionContent>
               </AccordionItem>
