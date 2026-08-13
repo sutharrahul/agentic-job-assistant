@@ -73,30 +73,26 @@ export function WorkflowSection() {
           {STEPS.map(({ icon: Icon, title, description }, i) => (
             <Reveal key={title} delay={i * 70}>
               <div className="group relative flex gap-5 pb-10 last:pb-0">
+                {/* Starts below the dropped icon (12 + 40 + 4 = 56px) and runs
+                    12px past the row so it meets the next icon, which is
+                    dropped by the same amount. */}
                 {i < STEPS.length - 1 && (
-                  <span className="absolute top-11 left-[19px] h-[calc(100%-2.75rem)] w-px bg-border" />
+                  <span className="absolute top-14 left-[19px] h-[calc(100%-2.75rem)] w-px bg-border" />
                 )}
-                <span className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-sm font-medium shadow-sm transition-colors group-hover:border-foreground/30">
+                {/* mt-3 drops the icon onto the title rather than onto the step
+                    label above it: the title's first line is centred 32px down
+                    the text column (16px label + 4px gap + half of a 24px line
+                    box) and the icon's own centre is 20px, so it owes 12px.
+                    Anchored to the first line, not the block, so a title that
+                    wraps on a phone doesn't drag the icon down with it. */}
+                <span className="relative z-10 mt-3 flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-sm font-medium shadow-sm transition-colors group-hover:border-foreground/30">
                   <Icon className="size-4.5" />
                 </span>
-                <div className="flex flex-col gap-1.5">
-                  {/* The step label shares the title's row rather than sitting
-                      above it — stacked, it took the alignment slot and pushed
-                      the title half a circle below the icon.
-
-                      pt-2 centres the title's FIRST line on the icon: (size-10
-                      40px − 24px line box) / 2 = 8px. Centring the whole row
-                      instead drifts by half a line the moment a long title
-                      wraps on a phone, which is where it drifts most. */}
-                  <div className="flex items-baseline gap-2.5 pt-2">
-                    {/* shrink-0 and no flex-wrap: the title has to wrap inside
-                        its own box, because wrapping it to a new flex line
-                        would drop it below the label and undo the alignment. */}
-                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                      Step {i + 1}
-                    </span>
-                    <h3 className="font-heading text-base font-semibold">{title}</h3>
-                  </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Step {i + 1}
+                  </span>
+                  <h3 className="font-heading text-base font-semibold">{title}</h3>
                   <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
               </div>
