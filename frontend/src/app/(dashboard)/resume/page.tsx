@@ -83,7 +83,7 @@ export default function ResumePage() {
     return (
       <div>
         <PageHeading crumbs={["Workspace", "Resume"]} title="Resume" />
-        <div className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6 lg:p-8">
+        <div className="w-full space-y-6 p-4 sm:p-6 lg:p-8">
           <p className="text-sm text-destructive">
             We couldn&apos;t load your resume. The server may still be waking
             up — this can take up to a minute on the free tier.
@@ -106,11 +106,10 @@ export default function ResumePage() {
     <div>
       <PageHeading crumbs={["Workspace", "Resume"]} title="Resume" />
 
-      {/* Two columns from lg: up — the file card is small and static, so
-          pinning it to a narrow rail hands the rest of a wide screen to the
-          resume itself instead of leaving margins. Matches the max-w-6xl
-          the application detail page already uses. */}
-      <div className="mx-auto grid max-w-6xl gap-6 p-4 sm:p-6 lg:grid-cols-[280px_1fr] lg:p-8">
+      {/* Two columns from lg: up, and no max-width — the file card is small
+          and static, so pinning it to a narrow rail hands the whole rest of
+          the screen to the resume rather than leaving centred margins. */}
+      <div className="grid w-full gap-6 p-4 sm:p-6 lg:grid-cols-[280px_1fr] lg:p-8">
         <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
           {resume?.status === "FAILED" && (
             <p className="text-sm text-destructive">

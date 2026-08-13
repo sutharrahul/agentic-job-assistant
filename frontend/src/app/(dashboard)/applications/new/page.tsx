@@ -50,7 +50,7 @@ export default function NewApplicationPage() {
     <div>
       <PageHeading crumbs={["Workspace", "New application"]} title="New application" />
 
-      <div className="mx-auto w-full max-w-5xl p-4 sm:p-6 lg:p-8">
+      <div className="w-full p-4 sm:p-6 lg:p-8">
         <form onSubmit={handleSubmit}>
           <div className="rounded-2xl bg-card p-6 shadow-card sm:p-8">
             <p className="font-label text-xs font-bold tracking-widest text-muted-foreground uppercase">
@@ -65,7 +65,10 @@ export default function NewApplicationPage() {
               anything.
             </p>
 
-            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2">
+            {/* 4-up on wide screens: stretching four inputs across the full
+                width would trade empty margins for absurd line lengths, so
+                the row gets denser rather than wider. */}
+            <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="company">Company *</Label>
                 <Input
