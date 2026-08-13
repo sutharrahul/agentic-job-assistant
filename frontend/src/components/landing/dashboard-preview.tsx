@@ -1,41 +1,49 @@
-import { Sparkles, Lightbulb, TrendingUp } from "lucide-react";
+import { CalendarClock, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Reveal } from "@/components/landing/reveal";
 import { SectionHeading } from "@/components/landing/section-heading";
 
-const APPLICATIONS = [
-  { role: "Frontend Engineer", stage: "Interview", score: 91 },
-  { role: "Full-Stack Developer", stage: "Applied", score: 84 },
-  { role: "Product Engineer", stage: "Offer", score: 96 },
+// Everything below mirrors what the real dashboard actually renders
+// (app/(dashboard)/dashboard/page.tsx): four stat cards, a pipeline bar,
+// upcoming interviews and recent applications. The previous mock invented
+// a Resume Score, percentage-based skill gaps, an AI Suggestions panel and
+// an inline kanban — none of which exist — which promised a product the
+// app doesn't ship. Keep this in step when the dashboard changes.
+const STATS = [
+  { label: "Active applications", value: "12", caption: "3 added this week" },
+  { label: "Interview stage", value: "03", caption: "Updated moments ago" },
+  { label: "Average fit score", value: "84 / 100", caption: "Across 9 scored" },
+  { label: "Follow-ups due", value: "02", caption: "Older than 7 days" },
 ];
 
-const SKILL_GAPS = [
-  { skill: "TypeScript", value: 90 },
-  { skill: "System Design", value: 65 },
-  { skill: "GraphQL", value: 40 },
+// Same four statuses and the same stacked-bar treatment as the real
+// pipeline, including its dot colours.
+const PIPELINE = [
+  { status: "Applied", count: 6, color: "bg-sky-500" },
+  { status: "Interview", count: 3, color: "bg-amber-500" },
+  { status: "Offer", count: 2, color: "bg-emerald-500" },
+  { status: "Rejected", count: 1, color: "bg-rose-400" },
 ];
 
-// Stronger skills get the deepest accent tone, weaker ones the
-// lightest — the bar color itself reads as a confidence signal instead
-// of every skill looking identically "done," and it puts all three
-// brand accent tones (light/default/dark) to use rather than picking
-// one arbitrarily.
-function skillBarColor(value: number) {
-  if (value >= 80) return "bg-purple-dark";
-  if (value >= 60) return "bg-purple";
-  return "bg-purple-light";
-}
+const TOTAL = PIPELINE.reduce((sum, s) => sum + s.count, 0);
 
-const SUGGESTIONS = [
-  "Add measurable impact to your last role's bullet points.",
-  "Highlight your LangGraph project — it matches this listing.",
-  "Mention team size to strengthen leadership signals.",
+const UPCOMING = [
+  {
+    role: "Frontend Engineer",
+    meta: "Northwind · Round 1 · Technical · Online",
+    when: "Aug 15, 10:00 AM",
+  },
+  {
+    role: "Full-Stack Developer",
+    meta: "Binc · Round 2 · System design · In-person",
+    when: "Aug 18, 2:30 PM",
+  },
 ];
 
-const KANBAN = [
-  { title: "Applied", items: ["Vercel", "Notion"] },
-  { title: "Interview", items: ["Linear"] },
-  { title: "Offer", items: ["Stripe"] },
+const RECENT = [
+  { role: "Frontend Engineer", company: "Northwind", fit: 91, stage: "Interview" },
+  { role: "Full-Stack Developer", company: "Binc", fit: 84, stage: "Applied" },
+  { role: "Product Engineer", company: "Kestrel", fit: 96, stage: "Offer" },
 ];
 
 export function DashboardPreview() {
@@ -46,117 +54,108 @@ export function DashboardPreview() {
           <SectionHeading
             eyebrow="Dashboard"
             title="Your whole job search, in one view"
-            description="A single dashboard for resume health, live applications, and AI-generated guidance."
+            description="Where every application stands, what needs a follow-up, and which interview is next."
           />
         </Reveal>
 
         <Reveal delay={120}>
-          <div className="mt-12 rounded-2xl border border-border bg-card p-2 shadow-xl ring-1 ring-foreground/10">
-            <div className="flex items-center gap-1.5 px-3 py-2">
-              <span className="size-2.5 rounded-full bg-muted" />
-              <span className="size-2.5 rounded-full bg-muted" />
-              <span className="size-2.5 rounded-full bg-muted" />
-              <span className="font-label ml-2 text-xs text-muted-foreground">
-                dashboard.agenticjobassistant.app
-              </span>
+          <div className="mt-12 rounded-2xl border border-border bg-card p-3 shadow-xl ring-1 ring-foreground/10 sm:p-4">
+            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {STATS.map((stat) => (
+                <div key={stat.label} className="rounded-xl bg-surface-2 p-4">
+                  <p className="font-label text-xs tracking-widest text-muted-foreground uppercase">
+                    {stat.label}
+                  </p>
+                  <p className="font-heading mt-2 text-2xl font-bold tracking-tight">
+                    {stat.value}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{stat.caption}</p>
+                </div>
+              ))}
             </div>
 
-            <div className="grid grid-cols-1 gap-3 rounded-xl bg-muted/30 p-3 lg:grid-cols-3">
-              {/* Resume score */}
-              <div className="flex flex-col justify-between gap-4 rounded-xl bg-card p-5 ring-1 ring-foreground/5">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Resume Score</span>
-                  <TrendingUp className="size-4 text-muted-foreground" />
-                </div>
-                <div className="flex items-end gap-2">
-                  <span className="font-heading text-5xl font-semibold">87</span>
-                  <span className="pb-1.5 text-sm text-muted-foreground">/ 100</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full w-[87%] rounded-full bg-purple" />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Strong for Senior Frontend roles.
+            <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
+              <div className="rounded-xl bg-surface-2 p-4">
+                <p className="font-label text-xs tracking-widest text-muted-foreground uppercase">
+                  Pipeline
                 </p>
+                <div className="mt-3 flex h-2 w-full overflow-hidden rounded-full bg-muted">
+                  {PIPELINE.map((s) => (
+                    <div
+                      key={s.status}
+                      className={s.color}
+                      style={{ width: `${(s.count / TOTAL) * 100}%` }}
+                    />
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {PIPELINE.map((s) => (
+                    <span key={s.status} className="flex items-center gap-1.5">
+                      <span className={`size-1.5 rounded-full ${s.color}`} />
+                      {s.status}{" "}
+                      <span className="font-medium text-foreground">{s.count}</span>
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-4 flex items-start gap-2 border-t border-border pt-3">
+                  <Clock className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-foreground">Product Engineer</span> at
+                    Kestrel has had no reply for 9 days.
+                  </p>
+                </div>
               </div>
 
-              {/* Skill gap chart */}
-              <div className="flex flex-col gap-3 rounded-xl bg-card p-5 ring-1 ring-foreground/5 lg:col-span-2">
-                <span className="text-sm font-medium">Skill Gap Analysis</span>
-                <div className="flex flex-1 flex-col justify-center gap-3">
-                  {SKILL_GAPS.map(({ skill, value }) => (
-                    <div key={skill} className="flex items-center gap-3">
-                      <span className="font-label w-28 shrink-0 text-xs text-muted-foreground">
-                        {skill}
-                      </span>
-                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={`h-full rounded-full ${skillBarColor(value)}`}
-                          style={{ width: `${value}%` }}
-                        />
+              <div className="rounded-xl bg-surface-2 p-4">
+                <p className="font-label text-xs tracking-widest text-muted-foreground uppercase">
+                  Upcoming interviews
+                </p>
+                <div className="mt-3 space-y-2">
+                  {UPCOMING.map((item) => (
+                    <div
+                      key={item.role}
+                      className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-lg bg-card px-3 py-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">{item.role}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.meta}
+                        </p>
                       </div>
-                      <span className="font-label w-8 shrink-0 text-right text-xs text-muted-foreground">
-                        {value}%
+                      <span className="font-label flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                        <CalendarClock className="size-3" />
+                        {item.when}
                       </span>
                     </div>
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* Kanban board */}
-              <div className="flex flex-col gap-3 rounded-xl bg-card p-5 ring-1 ring-foreground/5 lg:col-span-2">
-                <span className="text-sm font-medium">Applications Board</span>
-                <div className="grid grid-cols-3 gap-2">
-                  {KANBAN.map((col) => (
-                    <div key={col.title} className="flex flex-col gap-2 rounded-lg bg-muted/50 p-2">
-                      <span className="font-label px-1 text-xs font-medium text-muted-foreground">
-                        {col.title}
+            <div className="mt-3 rounded-xl bg-surface-2 p-4">
+              <p className="font-label text-xs tracking-widest text-muted-foreground uppercase">
+                Recent applications
+              </p>
+              <div className="mt-3 space-y-1">
+                {RECENT.map((app) => (
+                  <div
+                    key={app.role}
+                    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-lg bg-card px-3 py-2"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{app.company}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {app.role}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-3">
+                      <span className="font-label text-xs text-muted-foreground">
+                        {app.fit} fit
                       </span>
-                      {col.items.map((item) => (
-                        <div
-                          key={item}
-                          className="rounded-md bg-card px-2 py-1.5 text-xs ring-1 ring-foreground/5"
-                        >
-                          {item}
-                        </div>
-                      ))}
+                      <Badge variant="secondary">{app.stage}</Badge>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* AI suggestions */}
-              <div className="flex flex-col gap-3 rounded-xl bg-card p-5 ring-1 ring-foreground/5">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="size-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">AI Suggestions</span>
-                </div>
-                <ul className="flex flex-col gap-2">
-                  {SUGGESTIONS.map((tip) => (
-                    <li key={tip} className="flex gap-2 text-xs text-muted-foreground">
-                      <Sparkles className="mt-0.5 size-3 shrink-0" />
-                      {tip}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Recent applications */}
-              <div className="flex flex-col gap-3 rounded-xl bg-card p-5 ring-1 ring-foreground/5 lg:col-span-3">
-                <span className="text-sm font-medium">Recent Applications</span>
-                <div className="flex flex-col divide-y divide-border">
-                  {APPLICATIONS.map((app) => (
-                    <div key={app.role} className="flex items-center justify-between py-2.5">
-                      <span className="text-sm">{app.role}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="font-label text-xs text-muted-foreground">
-                          Fit {app.score}%
-                        </span>
-                        <Badge variant="outline">{app.stage}</Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
