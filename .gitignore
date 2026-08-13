@@ -65,3 +65,8 @@ interview-prep.md
 # Aug 2026, so it is still readable in this repo's history — see the note
 # in the commit that removed it.
 /docs/WALKTHROUGH.md
+
+# Personal deployment notes — kept local at your request, same as the
+# walkthrough above. Nothing in here is secret, but it is yours to keep
+# out of the public repo.
+/docs/HOSTING.md
