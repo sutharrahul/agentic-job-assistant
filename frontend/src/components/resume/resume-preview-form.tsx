@@ -13,7 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TagInput } from "@/components/tag-input";
 
 // Matches the nested-entry treatment used for Experience/Education/
@@ -95,50 +94,24 @@ export function ResumePreviewForm({
         />
       </div>
 
-      <div className="rounded-2xl bg-card p-6 shadow-card">
+      {/* One scrolling document rather than four tabs: three of the four
+          sections used to be hidden behind a click, which is what made the
+          page feel empty — the content was there, just not on screen. */}
+      <section className="rounded-2xl bg-card p-6 shadow-card">
         <h2 className="font-heading mb-4 text-base font-medium">
-          Parsed review
+          Skills <span className="text-muted-foreground">· {data.skills.length}</span>
         </h2>
-        <Tabs defaultValue="skills" className="gap-6">
-          <TabsList
-            variant="line"
-            className="h-auto w-fit gap-1 bg-transparent p-0"
-          >
-            <TabsTrigger
-              value="skills"
-              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
-            >
-              Skills
-            </TabsTrigger>
-            <TabsTrigger
-              value="experience"
-              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
-            >
-              Experience
-            </TabsTrigger>
-            <TabsTrigger
-              value="education"
-              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
-            >
-              Education
-            </TabsTrigger>
-            <TabsTrigger
-              value="projects"
-              className="h-auto flex-none rounded-full px-4 py-1.5 text-sm font-medium text-muted-foreground after:hidden data-active:!bg-primary data-active:!text-primary-foreground data-active:!shadow-none"
-            >
-              Projects
-            </TabsTrigger>
-          </TabsList>
+        <TagInput
+          value={data.skills}
+          onChange={(skills) => setData({ ...data, skills })}
+          placeholder="Add a skill and press Enter"
+        />
+      </section>
 
-          <TabsContent value="skills">
-            <TagInput
-              value={data.skills}
-              onChange={(skills) => setData({ ...data, skills })}
-              placeholder="Add a skill and press Enter"
-            />
-          </TabsContent>
-
-          <TabsContent value="experience" className="space-y-4">
+      <section className="space-y-4 rounded-2xl bg-card p-6 shadow-card">
+        <h2 className="font-heading text-base font-medium">
+          Experience <span className="text-muted-foreground">· {data.experience.length}</span>
+        </h2>
           {data.experience.map((entry, index) => (
             <div key={index} className={entryClassName}>
               <div className="grid grid-cols-2 gap-2">
@@ -219,9 +192,12 @@ export function ResumePreviewForm({
           >
             Add experience
           </Button>
-          </TabsContent>
+      </section>
 
-          <TabsContent value="education" className="space-y-4">
+      <section className="space-y-4 rounded-2xl bg-card p-6 shadow-card">
+        <h2 className="font-heading text-base font-medium">
+          Education <span className="text-muted-foreground">· {data.education.length}</span>
+        </h2>
           {data.education.map((entry, index) => (
             <div key={index} className={entryClassName}>
               <div className="grid grid-cols-2 gap-2">
@@ -293,9 +269,12 @@ export function ResumePreviewForm({
           >
             Add education
           </Button>
-          </TabsContent>
+      </section>
 
-          <TabsContent value="projects" className="space-y-4">
+      <section className="space-y-4 rounded-2xl bg-card p-6 shadow-card">
+        <h2 className="font-heading text-base font-medium">
+          Projects <span className="text-muted-foreground">· {data.projects.length}</span>
+        </h2>
           {data.projects.map((entry, index) => (
             <div key={index} className={entryClassName}>
               <Input
@@ -350,9 +329,7 @@ export function ResumePreviewForm({
           >
             Add project
           </Button>
-          </TabsContent>
-        </Tabs>
-      </div>
+      </section>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
       <Button onClick={handleConfirm} disabled={isSaving} size="lg">
