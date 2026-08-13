@@ -29,8 +29,8 @@ import { WebhooksModule } from './webhooks/webhooks.module';
     //
     // Storage is in-memory: counters reset when the process restarts and
     // aren't shared between instances. Fine for a single free-tier
-    // instance; a multi-instance deployment would need Redis-backed
-    // storage to be accurate.
+    // instance; a multi-instance deployment would need a shared store to
+    // be accurate.
     ThrottlerModule.forRoot([
       { name: 'short', ttl: minutes(1), limit: 60 },
       { name: 'daily', ttl: hours(24), limit: 2000 },

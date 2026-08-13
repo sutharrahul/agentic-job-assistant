@@ -112,11 +112,6 @@ export class OrchestrationService {
   }
 
   analyzeFit(payload: { parsed_resume: unknown; parsed_job: JobPayload }) {
-    // TODO: check Redis for a cached result (keyed on resume + job
-    // description) before making this call, and write the response back
-    // to the cache after. This is the one AI call worth caching, because
-    // scoring the same resume against the same job description twice
-    // should return the same score — see WALKTHROUGH.md.
     return this.post<AnalyzeFitResponse>('/analyze-fit', payload);
   }
 

@@ -8,8 +8,7 @@ it's built this way.
 > why the system is shaped the way it is — that part still holds. The ✅ / 🚧
 > progress markers it used to carry have been removed: everything they marked
 > as unbuilt (resume upload, Kanban board, auth UI) has since been built, so
-> §2 now states status in prose and calls out the one step that genuinely
-> isn't built.
+> §2 now states status in prose. Every step it describes is running.
 >
 > Two things changed after most of this was written, and both are corrected
 > in place below: **auth moved from Supabase Auth to Clerk**, and the
@@ -44,10 +43,11 @@ Supporting services (reachable from NestJS, not from the browser):
   Clerk              — issues the JWT every request carries
 ```
 
-> Redis appeared in this diagram for a long time as "cache + rate limiting".
-> It was never built. Rate limiting is real but in-memory
-> (`ThrottlerModule` in `app.module.ts`), and fit-analysis caching is still
-> a TODO in `orchestration.service.ts`.
+> There is no cache tier in this diagram, and that's deliberate. A Redis
+> box sat here for a long time as "cache + rate limiting"; neither use
+> survived contact with the design. Rate limiting turned out to work
+> in-memory at this scale (`ThrottlerModule` in `app.module.ts`), and
+> Postgres already does the caching job — see §4.
 
 **Why three services instead of one?** Each one has a genuinely different
 job and a different *failure mode*:
@@ -77,8 +77,7 @@ and exactly one place that decides "is this request allowed."
 ## 2. One request, end to end: resume upload → fit score → cover letter → Kanban
 
 This traces the flow end to end, and each step names the real file it
-lives in. Everything below is built and running **except step 8** (the
-Redis cache in front of fit analysis), which is flagged where it appears.
+lives in. Everything below is built and running.
 
 1. **User logs in** — Clerk issues a session JWT and manages it in the
    browser (`@clerk/nextjs`; the sign-in UI lives at
@@ -127,29 +126,20 @@ Redis cache in front of fit analysis), which is flagged where it appears.
    at `frontend/src/app/(dashboard)/applications/new/`. Scoring the fit
    is a separate explicit action: `POST /applications/:id/analyze-fit`.
 
-8. **NestJS would check Redis first** — **this is the one step here that
-   is not built**, but this is *where* it belongs: before calling
-   FastAPI's `/analyze-fit`, `OrchestrationService.analyzeFit()` should
-   check whether this exact resume+job pair was scored before. If yes,
-   return the cached score — skip the LLM call entirely. If no, call
-   FastAPI, then write the result to Redis. Today it always calls
-   FastAPI; the cache lookup is still a `TODO` in
-   `orchestration.service.ts`.
-
-9. **FastAPI scores the fit** — `/analyze-fit`
+8. **FastAPI scores the fit** — `/analyze-fit`
    (`ai-service/app/routers/fit.py`) is a single `temperature=0` LLM call
    with `with_structured_output(AnalyzeFitResponse)`. Not a LangGraph
    node: it's one step, so a graph would add ceremony and nothing else.
    Returns `fit_score`, `matched_skills`, `missing_skills`, `suggestions`.
 
-10. **NestJS generates a cover letter draft** — calls FastAPI's
+9. **NestJS generates a cover letter draft** — calls FastAPI's
     `/generate-cover-letter` (`ai-service/app/routers/cover_letter.py`),
     a single `temperature=0.7` call returning plain text. NestJS stores
     it with `coverLetterApproved: false` — this is the step that waits
     for a human, see §4 for why and for how that wait is implemented.
 
-11. **User reviews and approves/edits the draft** — the draft is already
-    persisted (step 10 wrote it) but stays unapproved until an explicit
+10. **User reviews and approves/edits the draft** — the draft is already
+    persisted (step 9 wrote it) but stays unapproved until an explicit
     click. "Approve" sends the possibly-edited text *and*
     `coverLetterApproved: true` in one PATCH
     (`frontend/src/components/applications/cover-letter-card.tsx`).
@@ -162,14 +152,14 @@ Redis cache in front of fit analysis), which is flagged where it appears.
     `ApplicationsService.generateCoverLetter()` writes as part of the
     same update.
 
-12. **The `Application` row carries every result** — it was created in
+11. **The `Application` row carries every result** — it was created in
     step 7 with `status: APPLIED` (the schema default), and each AI
     action updates it in place: fit score + skill gaps, cover letter +
     tone + approval flag, interview prep. All of it goes through
     `ApplicationsService`
     (`backend/src/applications/applications.service.ts`).
 
-13. **User drags the card on the Kanban board**
+12. **User drags the card on the Kanban board**
     (`frontend/src/components/applications/kanban-board.tsx`) — it moves
     the card optimistically, then calls
     `api.patch(`/applications/${id}`, { status })` via
@@ -265,20 +255,28 @@ Then FastAPI would need to authenticate users itself, and there'd be two
 places enforcing "who can access what" instead of one. Centralizing that
 in NestJS means one guard (`ClerkAuthGuard`), one place to check.
 
-**"Why cache the fit score, and why only that one?"**
-Fit-score and cover-letter generation both cost a real LLM call — money
-and latency. Fit score is the one that's naturally **idempotent**: it
-runs at `temperature=0`, so the same resume against the same job
-description should always produce the same score, and recomputing it
-when a user refreshes or revisits an application is pure waste. A cover
-letter is the opposite: "Regenerate" is *supposed* to give a different
-draft, so caching it would break the feature.
+**"Why is there no cache in front of the LLM calls?"**
+The good version of this answer starts by narrowing the question, because
+only one of these calls is even a cache candidate. Fit score is
+**idempotent** — `temperature=0`, so the same resume against the same job
+should always produce the same score. A cover letter is the opposite:
+"Regenerate" is *supposed* to return a different draft, so caching it
+would break the feature outright.
 
-Be honest about status if asked: this is designed, not built. The cache
-lookup is a TODO in `OrchestrationService.analyzeFit()`, and rate-limit
-counters are currently in-memory, which means they reset on restart and
-aren't shared across instances. Both are the same one-line answer —
-Upstash Redis — which is why they're worth mentioning together.
+So the question is only ever about fit score, and there **Postgres is
+already the cache**. `ApplicationsService.analyzeFit()` writes `fitScore`
+and `skillGapAnalysis` onto the application row, and nothing recomputes
+them — revisiting or refreshing an application reads the stored result.
+The only path back to the model is the explicit "Re-run analysis" button,
+which is a *request* for a fresh answer; serving that from a cache would
+break it for the same reason caching "Regenerate" would.
+
+That leaves one real gap, worth naming before an interviewer finds it:
+the cache is per application, so pasting the same job description into
+two applications scores it twice. A keyed cache would fix that. It would
+also be a whole piece of infrastructure to save one LLM call in an
+uncommon case — which is why an earlier Redis plan was dropped rather
+than built.
 
 **"Why human-in-the-loop for the cover letter specifically, and not the
 other AI steps?"**
@@ -375,16 +373,15 @@ practice":
   calls a day: 10/min and 60/day on the AI actions, 5/min and 40/day on
   resume upload.
 
-- **Still no caching.** Scoring the same resume against the same job
-  re-runs the model every time. Redis was the planned answer; it is not
-  wired up, and the misleading `REDIS_URL` env var and landing-page logo
-  were removed rather than left implying otherwise. Note the trade-off
-  that rate limiting does *not* solve this — it bounds abuse, not waste.
+- **No cache across applications.** Within one application the score is
+  stored and reused (see §4), but the same job description pasted into
+  two applications is scored twice. Rate limiting does *not* cover this
+  — it bounds abuse, not waste.
 
 - **Throttle counters are in-memory.** They reset on restart and aren't
-  shared across instances, so a multi-instance deployment would need
-  Redis-backed storage to enforce limits accurately. Fine on a single
-  free-tier instance; know that it's a deliberate scope choice.
+  shared across instances, so a multi-instance deployment would need a
+  shared store to enforce limits accurately. Fine on a single free-tier
+  instance; know that it's a deliberate scope choice.
 
 - **`prisma.module.ts` uses `@Global()`** — convenient (no need to import
   `PrismaModule` everywhere), but it means `PrismaService` availability
