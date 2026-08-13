@@ -1,15 +1,14 @@
 # This is the ONLY file in the service that should import
-# ChatGoogleGenerativeAI/ChatOllama (or their embeddings equivalents)
-# directly. Every feature that needs a chat model or an embeddings model
-# calls get_chat_model()/get_embeddings_model() from here instead —
-# that's what makes "switch LLM provider" a single env var
-# (LLM_PROVIDER, see core/config.py) instead of a find-and-replace
-# across every file that happens to call an LLM.
+# ChatGoogleGenerativeAI/ChatOllama directly. Every feature that needs a
+# chat model calls get_chat_model() from here instead — that's what makes
+# "switch LLM provider" a single env var (LLM_PROVIDER, see
+# core/config.py) instead of a find-and-replace across every file that
+# happens to call an LLM.
 #
-# This works because LangChain gives every provider's chat/embeddings
-# class the SAME interface (BaseChatModel / Embeddings) — callers use
-# things like .with_structured_output() or .embed_query() without
-# needing to know or care which provider is actually underneath.
+# This works because LangChain gives every provider's chat class the SAME
+# interface (BaseChatModel) — callers use things like
+# .with_structured_output() without needing to know or care which
+# provider is actually underneath.
 #
 # The provider packages are imported INSIDE the branches below rather than
 # at module level. Only one provider is ever selected at runtime, but a
@@ -19,15 +18,9 @@
 # memory and time-to-first-request. The "one file knows the providers"
 # rule above is unaffected: these are still the only such imports in the
 # service, they just run later.
-from langchain_core.embeddings import Embeddings
 from langchain_core.language_models.chat_models import BaseChatModel
 
 from app.core.config import settings
-
-# The chat model id now comes from settings (GEMINI_CHAT_MODEL) so it can
-# be pinned per-environment without a code change — see core/config.py.
-GEMINI_EMBEDDING_MODEL = "models/text-embedding-004"
-
 
 def get_chat_model(temperature: float = 0) -> BaseChatModel:
     if settings.llm_provider == "ollama":
@@ -78,20 +71,4 @@ def with_llm_retry(runnable):
     return runnable.with_retry(
         stop_after_attempt=5,
         exponential_jitter_params={"initial": 3, "max": 20, "exp_base": 2},
-    )
-
-
-def get_embeddings_model() -> Embeddings:
-    if settings.llm_provider == "ollama":
-        from langchain_ollama import OllamaEmbeddings
-
-        return OllamaEmbeddings(
-            base_url=settings.ollama_base_url,
-            model=settings.ollama_embedding_model,
-        )
-    from langchain_google_genai import GoogleGenerativeAIEmbeddings
-
-    return GoogleGenerativeAIEmbeddings(
-        model=GEMINI_EMBEDDING_MODEL,
-        google_api_key=settings.gemini_api_key,
     )
