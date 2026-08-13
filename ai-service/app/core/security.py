@@ -18,8 +18,6 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-SERVICE_TOKEN_HEADER = "X-Service-Token"
-
 
 def warn_if_unprotected() -> None:
     """Called once at startup so a missing token is visible in the logs.

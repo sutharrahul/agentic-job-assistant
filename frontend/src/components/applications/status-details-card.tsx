@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Application, ApplicationStatus } from "@/lib/types/application";
 import { updateApplication, UpdateApplicationInput } from "@/lib/api/applications";
-import { cn } from "@/lib/utils";
+import { cn, isoToDateInput } from "@/lib/utils";
 
 // Per-status header treatment — same hues as the kanban lanes so the
 // card immediately reads as "this is about the Applied/Offer/… stage".
@@ -45,11 +45,6 @@ const STATUS_CONFIG: Record<
     chipClass: "bg-rose-500/10 text-rose-600 dark:text-rose-400",
   },
 };
-
-// ISO from the API -> value an <input type="date"> can display.
-function isoToDateInput(iso: string | null): string {
-  return iso ? new Date(iso).toISOString().slice(0, 10) : "";
-}
 
 export function StatusDetailsCard({
   app,

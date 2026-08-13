@@ -43,7 +43,7 @@ import {
   deleteInterviewRound,
   updateInterviewRound,
 } from "@/lib/api/applications";
-import { cn } from "@/lib/utils";
+import { cn, isoToDateInput } from "@/lib/utils";
 
 // Curated presets cover most real interview loops; "Custom…" is the
 // escape hatch for the ones that don't (company-specific round names
@@ -112,10 +112,6 @@ function isoToDatetimeLocal(iso: string | null): string {
   return new Date(d.getTime() - d.getTimezoneOffset() * 60000)
     .toISOString()
     .slice(0, 16);
-}
-
-function isoToDateInput(iso: string | null): string {
-  return iso ? new Date(iso).toISOString().slice(0, 10) : "";
 }
 
 function formatDateTime(iso: string) {

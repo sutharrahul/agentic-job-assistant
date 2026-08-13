@@ -10,11 +10,6 @@ export async function listResumes(): Promise<Resume[]> {
   return data;
 }
 
-export async function getResume(id: string): Promise<Resume> {
-  const { data } = await api.get<Resume>(`/resumes/${id}`);
-  return data;
-}
-
 // Newest upload wins — mirrors ApplicationsService.getConfirmedResume's
 // `orderBy: updatedAt desc` pick on the backend, so the page that opens
 // on load shows the same resume the AI actions would grade against.
