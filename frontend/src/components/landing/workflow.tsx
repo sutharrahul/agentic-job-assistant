@@ -79,13 +79,24 @@ export function WorkflowSection() {
                 <span className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-sm font-medium shadow-sm transition-colors group-hover:border-foreground/30">
                   <Icon className="size-4.5" />
                 </span>
-                <div className="flex flex-col gap-1 pt-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">
+                <div className="flex flex-col gap-1.5">
+                  {/* The step label shares the title's row rather than sitting
+                      above it — stacked, it took the alignment slot and pushed
+                      the title half a circle below the icon.
+
+                      pt-2 centres the title's FIRST line on the icon: (size-10
+                      40px − 24px line box) / 2 = 8px. Centring the whole row
+                      instead drifts by half a line the moment a long title
+                      wraps on a phone, which is where it drifts most. */}
+                  <div className="flex items-baseline gap-2.5 pt-2">
+                    {/* shrink-0 and no flex-wrap: the title has to wrap inside
+                        its own box, because wrapping it to a new flex line
+                        would drop it below the label and undo the alignment. */}
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
                       Step {i + 1}
                     </span>
+                    <h3 className="font-heading text-base font-semibold">{title}</h3>
                   </div>
-                  <h3 className="font-heading text-base font-semibold">{title}</h3>
                   <p className="text-sm text-muted-foreground">{description}</p>
                 </div>
               </div>
