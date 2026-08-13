@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/mode-toggle";
+import { UserMenu } from "@/components/layout/user-menu";
 
 // Deliberately no nav links (Features/Workflow/FAQ used to live here) —
 // this landing page's hero carries the primary conversion action itself
@@ -53,9 +54,16 @@ export function Navbar() {
           </span>
           <ModeToggle />
           {showSignedIn ? (
-            <Button nativeButton={false} render={<Link href="/dashboard" />}>
-              Dashboard
-            </Button>
+            <>
+              <Button nativeButton={false} render={<Link href="/dashboard" />}>
+                Dashboard
+              </Button>
+              {/* The same menu the app header uses, rather than a second
+                  sign-out button here: signing out is the one action a
+                  returning visitor can't otherwise reach without going
+                  into the app first. */}
+              <UserMenu />
+            </>
           ) : (
             <Button nativeButton={false} render={<Link href="/login" />}>
               Sign in

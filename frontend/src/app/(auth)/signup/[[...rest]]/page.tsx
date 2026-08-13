@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { AuthenticateWithRedirectCallback, useSignUp } from "@clerk/nextjs";
 import {
   AuthCard,
@@ -16,9 +16,9 @@ import {
   useCountdown,
 } from "@/components/auth/auth-ui";
 import { OtpInput } from "@/components/auth/otp-input";
+import { AFTER_SIGN_IN, AFTER_SIGN_UP } from "@/lib/auth-redirects";
 import { clerkErrorMessage } from "@/lib/clerk-error";
 
-const AFTER_AUTH = "/resume";
 const RESEND_SECONDS = 30;
 
 // Catch-all segment for the same reason as the login route — see the
@@ -29,8 +29,8 @@ export default function SignupPage() {
   if (params.rest?.[0] === "sso-callback") {
     return (
       <AuthenticateWithRedirectCallback
-        signInFallbackRedirectUrl={AFTER_AUTH}
-        signUpFallbackRedirectUrl={AFTER_AUTH}
+        signInFallbackRedirectUrl={AFTER_SIGN_IN}
+        signUpFallbackRedirectUrl={AFTER_SIGN_UP}
       />
     );
   }
@@ -40,7 +40,6 @@ export default function SignupPage() {
 
 function SignUpForm() {
   const { signUp } = useSignUp();
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
@@ -107,16 +106,19 @@ function SignUpForm() {
         return;
       }
 
-      const finished = await signUp.finalize();
+      // Hard navigation through finalize's own hook — see the matching
+      // note in the login route: /resume is behind auth.protect(), and a
+      // client-side push races the session cookie back to /login.
+      const finished = await signUp.finalize({
+        navigate: ({ decorateUrl }) => {
+          window.location.href = decorateUrl(AFTER_SIGN_UP);
+        },
+      });
       if (finished.error) {
         setError(clerkErrorMessage(finished.error, "Couldn't start your session."));
         setIsBusy(false);
-        return;
       }
-
-      // No setIsBusy(false) past here: the component unmounts on
-      // navigation, and setting state on the way out warns in React.
-      router.push(AFTER_AUTH);
+      // No setIsBusy(false) on success: the page is already navigating.
     } catch (err) {
       setError(clerkErrorMessage(err, "Something went wrong. Try again."));
       setIsBusy(false);
@@ -149,7 +151,7 @@ function SignUpForm() {
     try {
       const { error: ssoError } = await signUp.sso({
         strategy: "oauth_google",
-        redirectUrl: AFTER_AUTH,
+        redirectUrl: AFTER_SIGN_UP,
         redirectCallbackUrl: "/signup/sso-callback",
       });
       if (ssoError) {

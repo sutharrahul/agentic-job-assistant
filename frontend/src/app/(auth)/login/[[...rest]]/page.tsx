@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { AuthenticateWithRedirectCallback, useSignIn } from "@clerk/nextjs";
 import {
   AuthCard,
@@ -17,9 +17,9 @@ import {
   useCountdown,
 } from "@/components/auth/auth-ui";
 import { OtpInput } from "@/components/auth/otp-input";
+import { AFTER_SIGN_IN, AFTER_SIGN_UP } from "@/lib/auth-redirects";
 import { clerkErrorMessage } from "@/lib/clerk-error";
 
-const AFTER_AUTH = "/resume";
 const RESEND_SECONDS = 30;
 
 // Catch-all segment ([[...rest]]) is still required, but now for one
@@ -36,8 +36,8 @@ export default function LoginPage() {
   if (params.rest?.[0] === "sso-callback") {
     return (
       <AuthenticateWithRedirectCallback
-        signInFallbackRedirectUrl={AFTER_AUTH}
-        signUpFallbackRedirectUrl={AFTER_AUTH}
+        signInFallbackRedirectUrl={AFTER_SIGN_IN}
+        signUpFallbackRedirectUrl={AFTER_SIGN_UP}
       />
     );
   }
@@ -62,7 +62,6 @@ export function SignInFlow() {
   // rather than v6's `{ isLoaded, signIn, setActive }`, and its methods
   // resolve to `{ error }` instead of throwing.
   const { signIn } = useSignIn();
-  const router = useRouter();
 
   const [step, setStep] = useState<Step>("identifier");
   const [email, setEmail] = useState("");
@@ -115,15 +114,23 @@ export function SignInFlow() {
       setIsBusy(false);
       return;
     }
-    const finished = await signIn.finalize();
+    // Navigating through finalize's own hook, with a HARD navigation
+    // rather than router.push(). /dashboard is behind auth.protect() in
+    // proxy.ts, and a client-side push races the session cookie: the
+    // middleware evaluated the request before the cookie landed and
+    // bounced straight back to /login?redirect_url=/dashboard, signed in
+    // but on the wrong page. A full document request carries the cookie.
+    // decorateUrl is Clerk's Safari ITP cookie-refresh wrapper.
+    const finished = await signIn.finalize({
+      navigate: ({ decorateUrl }) => {
+        window.location.href = decorateUrl(AFTER_SIGN_IN);
+      },
+    });
     if (finished.error) {
       setError(clerkErrorMessage(finished.error, "Couldn't start your session."));
       setIsBusy(false);
-      return;
     }
-    // No setIsBusy(false) past here: the component unmounts on
-    // navigation, and setting state on the way out warns in React.
-    router.push(AFTER_AUTH);
+    // No setIsBusy(false) on success: the page is already navigating.
   }
 
   function sendEmailCode(next: Step) {
@@ -143,7 +150,7 @@ export function SignInFlow() {
       () =>
         signIn!.sso({
           strategy: "oauth_google",
-          redirectUrl: AFTER_AUTH,
+          redirectUrl: AFTER_SIGN_IN,
           redirectCallbackUrl: "/login/sso-callback",
         }),
       "Couldn't reach Google. Try again.",
