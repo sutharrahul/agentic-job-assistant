@@ -1,6 +1,5 @@
 import { Navbar } from "@/components/landing/navbar";
 import { Hero } from "@/components/landing/hero";
-import { TechStack } from "@/components/landing/tech-stack";
 import { Features } from "@/components/landing/features";
 import { WorkflowSection } from "@/components/landing/workflow";
 import { DashboardPreview } from "@/components/landing/dashboard-preview";
@@ -14,10 +13,9 @@ export default function Home() {
       <Navbar />
       <main className="flex-1">
         <Hero />
-        <TechStack />
+        <DashboardPreview />
         <Features />
         <WorkflowSection />
-        <DashboardPreview />
         <WhyChoose />
         <FAQ />
       </main>

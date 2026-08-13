@@ -62,7 +62,7 @@ export function Footer() {
 
         <div className="mt-12 border-t border-border pt-6 text-center text-xs text-muted-foreground">
           © 2026 Agentic Job Assistant. Built with Next.js, NestJS, FastAPI,
-          LangGraph, Gemini, and Supabase.
+          LangGraph, Gemini, PostgreSQL, Prisma and Supabase.
         </div>
       </div>
     </footer>
