@@ -10,6 +10,18 @@ export async function listResumes(): Promise<Resume[]> {
   return data;
 }
 
+// Fetched on click rather than held in component state: the URL the
+// backend mints expires after five minutes, so one resolved on page load
+// would already be dead by the time most people click it.
+export async function resumeFileUrl(
+  id: string,
+): Promise<{ url: string; fileName: string }> {
+  const { data } = await api.get<{ url: string; fileName: string }>(
+    `/resumes/${id}/file`,
+  );
+  return data;
+}
+
 // Newest upload wins — mirrors ApplicationsService.getConfirmedResume's
 // `orderBy: updatedAt desc` pick on the backend, so the page that opens
 // on load shows the same resume the AI actions would grade against.

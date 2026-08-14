@@ -35,6 +35,26 @@ export class ResumesService {
     return resume;
   }
 
+  // The uploaded file was write-only until now: it went to Storage, a
+  // signed URL was handed to FastAPI to parse it, and nothing ever
+  // handed one back to the person who uploaded it.
+  //
+  // Returns a URL rather than streaming the bytes through Nest. Proxying
+  // would pull the whole file into a 512MB free-tier instance and spend
+  // its bandwidth twice, to serve a file Supabase can serve directly.
+  //
+  // findOne first, and its result is what supplies storagePath — so the
+  // path is never taken from the request. A caller passing someone
+  // else's resume id gets the same 404 as a caller passing nonsense,
+  // and no URL is minted.
+  async fileUrl(id: string, userId: string) {
+    const resume = await this.findOne(id, userId);
+    return {
+      url: await this.supabaseService.createSignedUrl(resume.storagePath),
+      fileName: resume.fileName,
+    };
+  }
+
   async upload(userId: string, file: Express.Multer.File, email?: string) {
     // File type/size are validated by the controller's ParseFilePipe
     // before this runs — by magic number, not the client-supplied

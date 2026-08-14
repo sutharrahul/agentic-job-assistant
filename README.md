@@ -1,6 +1,6 @@
 # Agentic Job Assistant
 
-Upload your resume, paste a job description, and get a fit score, a skill-gap breakdown, a tailored cover letter, and an interview prep pack — then track every application on a Kanban board.
+Upload your resume, paste a job description, and get a fit score, a skill-gap breakdown, a tailored cover letter, and an interview prep pack — then track every application on a Kanban board, from applied through each interview round to the offer.
 
 Every AI output is a **draft you approve**. Drafts are stored as soon as they're generated — so you don't lose work on a refresh — but nothing is ever marked approved, auto-sent, or auto-applied without an explicit click.
 
@@ -19,11 +19,12 @@ It's also a deliberate exercise in service boundaries: a TypeScript app backend 
 
 | | |
 |---|---|
-| **Resume ingestion** | Upload a PDF/DOCX → text extraction → LLM parses it into structured data → you edit it → save as your base resume |
+| **Resume ingestion** | Upload a PDF/DOCX → text extraction → LLM parses it into structured data → you correct what it got wrong → save as your base resume. The original file stays downloadable; correcting the parse changes what the AI reads, never the file itself |
 | **Fit analysis** | Scores your resume against a job description, listing matched skills, missing skills, and concrete suggestions |
 | **Cover letters** | Three tone presets (Formal / Conversational / Concise), fully editable; the draft is saved the moment it's generated but stays flagged unapproved until you approve it |
-| **Interview prep** | A LangGraph workflow that derives focus areas, then generates technical and behavioural questions with talking points drawn from *your* resume |
-| **Application tracker** | Kanban board (Applied → Interview → Offer → Rejected) with drag-to-persist, notes, and stage-specific fields |
+| **Interview prep** | A two-branch LangGraph workflow: study topics derived from the job, plus questions an interviewer would ask about *your* projects — grounded only in the resume, never inferred from the job ad. Generated once per application and kept, so changing stage never spends quota re-deriving it |
+| **Interview rounds** | Schedule each round, then record what actually happened: the questions you were asked, your own feedback, the result, and whether a follow-up is due. Countdown badges on the board, next-interview card on the dashboard |
+| **Application tracker** | Kanban board (Applied → Interview → Offer → Rejected) with drag-to-persist, an add/delete notes list, and fields that change with the stage — offer details on OFFER, rejection reason on REJECTED |
 | **Dashboard** | Application stats, average fit score, and stale-application reminders |
 
 ## Architecture
@@ -137,7 +138,6 @@ npm run dev
 | `GEMINI_API_KEY` | Required when provider is `gemini` |
 | `GEMINI_CHAT_MODEL` | Optional — pin the model id (defaults to `gemini-3.5-flash-lite`, the lightest tier, picked for its higher free-tier request quota) |
 | `OLLAMA_BASE_URL`, `OLLAMA_CHAT_MODEL` | Used when provider is `ollama` |
-| `OLLAMA_EMBEDDING_MODEL` | Read by `get_embeddings_model()` — which nothing currently calls, since there's no vector store or RAG in the app. Effectively dead config, kept so the first person to add embeddings has a default |
 | `SERVICE_TOKEN` | Optional locally, required in deployment — must match the backend's `AI_SERVICE_TOKEN` |
 
 **`frontend/.env.local`**
@@ -148,7 +148,7 @@ npm run dev
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk client key |
 | `CLERK_SECRET_KEY` | Used by `clerkMiddleware()` in `frontend/src/proxy.ts` — Next 16 renamed the `middleware` file convention to `proxy`, so there is no `middleware.ts` |
 | `NEXT_PUBLIC_CLERK_SIGN_IN_URL` / `..._SIGN_UP_URL` | `/login` and `/signup` — this app doesn't use Clerk's default paths |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` / `..._SIGN_UP_...` | Where to land after authenticating (`/resume`) |
+| `NEXT_PUBLIC_CLERK_SIGN_IN_FALLBACK_REDIRECT_URL` / `..._SIGN_UP_...` | Where to land after authenticating — `/dashboard` for a returning user, `/resume` for a new one, who has nothing for the dashboard to show yet |
 
 ## Project structure
 

@@ -46,6 +46,22 @@ export class ResumesController {
     return this.resumesService.findOne(id, user.sub);
   }
 
+  // Declared BEFORE nothing else can shadow it — ':id' above is a
+  // single segment, so 'resumes/<id>/file' cannot be swallowed by it.
+  //
+  // Throttled harder than the plain reads: each call mints a signed URL
+  // that is valid for five minutes and bypasses this API entirely once
+  // issued, so an unbounded loop here is a way to mass-produce live
+  // links to a private file.
+  @Throttle({
+    short: { ttl: minutes(1), limit: 10 },
+    daily: { ttl: hours(24), limit: 100 },
+  })
+  @Get(':id/file')
+  fileUrl(@Param('id') id: string, @CurrentUser() user: ClerkJwtPayload) {
+    return this.resumesService.fileUrl(id, user.sub);
+  }
+
   // Upload costs an LLM call to parse, plus a write to object storage,
   // so it's capped harder than the read routes. Lower per-minute than
   // the AI actions because re-uploading a resume five times a minute is

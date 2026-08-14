@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { FileText } from "lucide-react";
 import { Resume } from "@/lib/types/resume";
-import { latestResume, listResumes } from "@/lib/api/resumes";
+import { latestResume, listResumes, resumeFileUrl } from "@/lib/api/resumes";
 import { ResumeUploadForm } from "@/components/resume/resume-upload-form";
 import { ResumePreviewForm } from "@/components/resume/resume-preview-form";
 import { Button } from "@/components/ui/button";
@@ -135,9 +135,12 @@ export default function ResumePage() {
                   )}
                 </p>
               </div>
-              <Button variant="outline" onClick={() => setIsReplacing(true)}>
-                Replace file
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <ViewFileButton resume={previewResume} />
+                <Button variant="outline" onClick={() => setIsReplacing(true)}>
+                  Replace file
+                </Button>
+              </div>
             </div>
           )}
 
@@ -177,6 +180,49 @@ export default function ResumePage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Opens the original uploaded file — the one thing this page could never
+// do before: the upload went to Storage and only the AI service was ever
+// handed a URL back.
+//
+// The URL is minted per click and expires in five minutes, so it is
+// never held in state. The tab is opened synchronously BEFORE the await:
+// a popup blocker treats window.open() after an await as programmatic
+// rather than user-driven and silently swallows it.
+function ViewFileButton({ resume }: { resume: Resume }) {
+  const [isOpening, setIsOpening] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  async function handleClick() {
+    setIsOpening(true);
+    setFailed(false);
+    const tab = window.open("", "_blank");
+    try {
+      const { url } = await resumeFileUrl(resume.id);
+      if (tab) tab.location.href = url;
+      else window.location.href = url;
+    } catch {
+      tab?.close();
+      setFailed(true);
+    } finally {
+      setIsOpening(false);
+    }
+  }
+
+  return (
+    <div className="space-y-1">
+      <Button variant="outline" onClick={handleClick} disabled={isOpening}>
+        <FileText className="size-4" />
+        {isOpening ? "Opening..." : "View original"}
+      </Button>
+      {failed && (
+        <p className="text-xs text-destructive">
+          Couldn&apos;t open that file. Try again.
+        </p>
+      )}
     </div>
   );
 }
