@@ -3,7 +3,12 @@ import { UserSync } from "@/components/user-sync";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="fixed inset-0 flex overflow-hidden">
+      {/* fixed + inset-0 rather than h-screen: pins this to the
+          viewport regardless of body's own height, so body never grows
+          past 100vh and gets its own scrollbar alongside main's — the
+          two nested scrollbars the user was seeing stacked at the
+          right edge. */}
       {/* Renders nothing — makes sure this user exists in our own
           database before any page below can reference them. See
           components/user-sync.tsx. */}
