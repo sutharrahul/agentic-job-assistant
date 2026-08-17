@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -10,6 +11,12 @@ async function bootstrap() {
   // order or whitespace enough to break the signature check. See
   // webhooks/clerk-webhook.controller.ts.
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // Sets the standard set of protective response headers (X-Content-Type-Options,
+  // Strict-Transport-Security, etc.) — NestJS's own recommended production
+  // hardening step. Default config only, no CSP: this is a pure JSON API with
+  // no HTML views of its own to lock down.
+  app.use(helmet());
 
   // CORS is locked to FRONTEND_URL, not "*" — this API should only ever
   // be called by our own Next.js app (from the browser) or by server-side
