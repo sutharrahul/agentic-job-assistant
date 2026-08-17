@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FileText, KanbanSquare, LayoutDashboard, Menu, Plus } from "lucide-react";
@@ -34,8 +35,8 @@ export function Sidebar() {
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar px-5 py-6 max-lg:hidden">
       <Link href="/" className="flex items-center gap-2 font-label text-sm font-bold">
-        <span className="size-2 shrink-0 rounded-full bg-purple" />
-        Agentic Job Assistant
+        <Image src="/logo.webp" alt="" width={20} height={20} className="rounded-md" />
+        Fitmark
       </Link>
 
       <nav className="mt-8 flex flex-col gap-1">
@@ -79,8 +80,8 @@ export function MobileTopBar() {
   return (
     <header className="flex items-center justify-between border-b bg-sidebar px-4 py-3 lg:hidden">
       <Link href="/" className="flex items-center gap-2 font-label text-sm font-bold">
-        <span className="size-2 shrink-0 rounded-full bg-purple" />
-        Agentic Job Assistant
+        <Image src="/logo.webp" alt="" width={20} height={20} className="rounded-md" />
+        Fitmark
       </Link>
       <div className="flex items-center gap-2">
         <ModeToggle />

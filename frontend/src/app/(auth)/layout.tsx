@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 export default function AuthLayout({
@@ -12,8 +13,8 @@ export default function AuthLayout({
           href="/"
           className="inline-flex items-center gap-2 font-label text-sm font-bold"
         >
-          <span className="size-2 shrink-0 rounded-full bg-purple" />
-          Agentic Job Assistant
+          <Image src="/logo.webp" alt="" width={20} height={20} className="rounded-md" />
+          Fitmark
         </Link>
       </header>
       <main className="flex flex-1 items-center justify-center px-4 pb-24">

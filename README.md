@@ -1,4 +1,4 @@
-# Agentic Job Assistant
+# Fitmark
 
 Upload your resume, paste a job description, and get a fit score, a skill-gap breakdown, a tailored cover letter, and an interview prep pack — then track every application on a Kanban board, from applied through each interview round to the offer.
 

@@ -52,7 +52,7 @@ export function Hero() {
         </h1>
 
         <p className="mt-6 max-w-xl text-lg text-balance text-muted-foreground">
-          Agentic Job Assistant turns your resume and a job description into
+          Fitmark turns your resume and a job description into
           a grounded fit score, a tailored cover letter, and a clear next
           step. You stay the author. You stay the approver.
         </p>

@@ -30,7 +30,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agentic Job Assistant",
+  title: "Fitmark",
   description: "AI-powered job application assistant",
 };
 

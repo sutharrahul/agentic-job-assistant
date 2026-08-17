@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
@@ -44,8 +45,8 @@ export function Navbar() {
     >
       <div className="mx-auto flex h-full max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2 font-label text-sm font-bold">
-          <span className="size-2 shrink-0 rounded-full bg-purple" />
-          Agentic Job Assistant
+          <Image src="/logo.webp" alt="" width={20} height={20} className="rounded-md" />
+          Fitmark
         </Link>
 
         <div className="flex items-center gap-3">
