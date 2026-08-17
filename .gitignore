@@ -72,3 +72,7 @@ interview-prep.md
 /docs/HOSTING.md
 /docs/INTERVIEW-PREP.md
 /docs/DOCKER-VS-DIRECT-DEPLOY.md
+
+# A real Supabase personal access token, dropped at the repo root. Unlike
+# the notes above, this one is an actual live credential — never commit.
+/accesstoken.md
