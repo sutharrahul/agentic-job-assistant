@@ -86,7 +86,7 @@ export default function ResumePage() {
         <div className="w-full space-y-6 p-4 sm:p-6 lg:p-8">
           <p className="text-sm text-destructive">
             We couldn&apos;t load your resume. The server may still be waking
-            up — this can take up to a minute on the free tier.
+            up.
           </p>
           <Button
             variant="outline"

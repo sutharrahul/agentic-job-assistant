@@ -59,15 +59,27 @@ export function KanbanBoard() {
   const [apps, setApps] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Separate from `error` above: that one covers a failed status-change
+  // revert (small inline message, board still usable). This one is the
+  // initial load failing entirely — a returning user with real
+  // applications hitting a cold-started backend shouldn't see an empty
+  // board with an easy-to-miss line of text; see resume/page.tsx for the
+  // same fix.
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by the retry button to re-run the effect below.
+  const [retryKey, setRetryKey] = useState(0);
   const [activeApp, setActiveApp] = useState<Application | null>(null);
   const [view, setView] = useState<"board" | "list">("board");
 
   useEffect(() => {
     listApplications()
-      .then(setApps)
-      .catch(() => setError("Couldn't load applications — is the backend running?"))
+      .then((data) => {
+        setApps(data);
+        setLoadFailed(false);
+      })
+      .catch(() => setLoadFailed(true))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [retryKey]);
 
   // Activation constraints are what keep the cards clickable: a mouse drag
   // only starts after 6px of movement, a touch drag after a 250ms hold —
@@ -115,6 +127,26 @@ export function KanbanBoard() {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <p className="text-sm text-muted-foreground">Loading applications...</p>
+      </div>
+    );
+  }
+
+  if (loadFailed) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+        <p className="text-sm text-destructive">
+          We couldn&apos;t load your applications. The server may still be
+          waking up.
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setIsLoading(true);
+            setRetryKey((k) => k + 1);
+          }}
+        >
+          Try again
+        </Button>
       </div>
     );
   }

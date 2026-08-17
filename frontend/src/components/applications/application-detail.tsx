@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AxiosError } from "axios";
 import {
   ArrowLeft,
   CalendarDays,
@@ -68,6 +69,13 @@ export function ApplicationDetail({ id }: { id: string }) {
   const router = useRouter();
   const [app, setApp] = useState<Application | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // Distinct from `!app`: a genuine 404 means the application doesn't
+  // exist, but a cold-started backend or a network blip previously
+  // collapsed into that same "doesn't exist" message — which reads as
+  // "this got deleted" to someone who just clicked a real application.
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by the retry button to re-run the effect below.
+  const [retryKey, setRetryKey] = useState(0);
   const [newNote, setNewNote] = useState("");
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -75,15 +83,44 @@ export function ApplicationDetail({ id }: { id: string }) {
 
   useEffect(() => {
     getApplication(id)
-      .then((data) => setApp(data))
-      .catch(() => setApp(null))
+      .then((data) => {
+        setApp(data);
+        setLoadFailed(false);
+      })
+      .catch((err) => {
+        setApp(null);
+        // A real 404 stays "doesn't exist"; anything else (timeout,
+        // network error, 5xx from a still-waking instance) is a load
+        // failure worth retrying rather than a final answer.
+        setLoadFailed(!(err instanceof AxiosError && err.response?.status === 404));
+      })
       .finally(() => setIsLoading(false));
-  }, [id]);
+  }, [id, retryKey]);
 
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <p className="text-sm text-muted-foreground">Loading application...</p>
+      </div>
+    );
+  }
+
+  if (!app && loadFailed) {
+    return (
+      <div className="space-y-6 p-4 sm:p-6 lg:p-8">
+        <p className="text-sm text-destructive">
+          We couldn&apos;t load this application. The server may still be
+          waking up.
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setIsLoading(true);
+            setRetryKey((k) => k + 1);
+          }}
+        >
+          Try again
+        </Button>
       </div>
     );
   }

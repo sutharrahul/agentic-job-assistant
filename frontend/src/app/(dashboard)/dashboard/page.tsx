@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -118,20 +117,28 @@ function getServerTodayLabel(): string | null {
 export default function DashboardPage() {
   const [apps, setApps] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  // Bumped by the retry button to re-run the effect below.
+  const [retryKey, setRetryKey] = useState(0);
   const todayLabel = useSyncExternalStore(
     subscribeToNothing,
     getTodayLabel,
     getServerTodayLabel,
   );
 
+  // loadFailed is tracked separately from an empty `apps` array — without
+  // it, a cold-started backend and a genuinely new user with zero
+  // applications rendered identically, which reads as "my data is gone"
+  // to a returning user. See the same fix in resume/page.tsx.
   useEffect(() => {
     listApplications()
-      .then(setApps)
-      .catch(() =>
-        toast.error("Couldn't load applications — is the backend running?"),
-      )
+      .then((data) => {
+        setApps(data);
+        setLoadFailed(false);
+      })
+      .catch(() => setLoadFailed(true))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [retryKey]);
 
   const staleApps = apps.filter(isStale);
   const scored = apps.filter((app) => app.fitScore !== null);
@@ -203,6 +210,29 @@ export default function DashboardPage() {
   // than silently dropped — a hidden interview is the one thing on this
   // page you cannot afford to miss.
   const visibleUpcoming = upcoming.slice(0, 5);
+
+  if (loadFailed) {
+    return (
+      <div>
+        <PageHeading crumbs={["Workspace", "Dashboard"]} title="Dashboard" />
+        <div className="w-full space-y-6 p-4 sm:p-6 lg:p-8">
+          <p className="text-sm text-destructive">
+            We couldn&apos;t load your applications. The server may still be
+            waking up.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setIsLoading(true);
+              setRetryKey((k) => k + 1);
+            }}
+          >
+            Try again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
