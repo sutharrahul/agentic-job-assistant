@@ -1,4 +1,6 @@
+import { NextResponse } from "next/server";
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { AFTER_SIGN_IN } from "@/lib/auth-redirects";
 
 // Next 16 renamed the `middleware` file convention to `proxy`. The file
 // must export the handler either as a default export or as a named
@@ -13,12 +15,25 @@ const isProtectedRoute = createRouteMatcher([
   "/applications(.*)",
 ]);
 
+// The reverse guard: an already-signed-in user visiting /login or /signup
+// doesn't need the form again, and letting them sit on it invites a second,
+// confusing sign-in attempt on top of a session that already exists.
+const isAuthRoute = createRouteMatcher(["/login(.*)", "/signup(.*)"]);
+
 export default clerkMiddleware(async (auth, request) => {
   // Only guard the app routes. The landing page, sign-in and sign-up
   // pages must stay reachable while signed out, so this is an allowlist
   // of what to protect rather than a blanket protect().
   if (isProtectedRoute(request)) {
     await auth.protect();
+    return;
+  }
+
+  if (isAuthRoute(request)) {
+    const { userId } = await auth();
+    if (userId) {
+      return NextResponse.redirect(new URL(AFTER_SIGN_IN, request.url));
+    }
   }
 });
 
