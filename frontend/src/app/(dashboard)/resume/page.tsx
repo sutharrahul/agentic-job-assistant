@@ -5,6 +5,7 @@ import { FileText } from "lucide-react";
 import { Resume } from "@/lib/types/resume";
 import { latestResume, listResumes, resumeFileUrl } from "@/lib/api/resumes";
 import { ResumeUploadForm } from "@/components/resume/resume-upload-form";
+import { AiStatusDot } from "@/components/resume/ai-status-dot";
 import { ResumePreviewForm } from "@/components/resume/resume-preview-form";
 import { Button } from "@/components/ui/button";
 import { PageHeading } from "@/components/layout/page-heading";
@@ -146,6 +147,7 @@ export default function ResumePage() {
 
         {showUploadForm && (
           <div className="space-y-3">
+            <AiStatusDot />
             <h2 className="font-heading text-base font-medium">
               Resume source
             </h2>

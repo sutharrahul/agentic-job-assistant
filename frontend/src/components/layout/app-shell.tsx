@@ -1,5 +1,6 @@
 import { MobileTopBar, Sidebar } from "@/components/layout/sidebar";
 import { UserSync } from "@/components/user-sync";
+import { AiWarmup } from "@/components/ai-warmup";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           database before any page below can reference them. See
           components/user-sync.tsx. */}
       <UserSync />
+      {/* Also renders nothing — a background nudge to start waking the
+          AI service's free-tier instance early. See ai-warmup.tsx. */}
+      <AiWarmup />
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden">
         <MobileTopBar />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState, type ChangeEvent } from "react";
+import { useEffect, useId, useState, type ChangeEvent } from "react";
 import { AxiosError } from "axios";
 import { Upload } from "lucide-react";
 import { api } from "@/lib/axios";
@@ -17,6 +17,12 @@ const ACCEPTED_TYPES = [
 // being uploaded in full and then bounced with a 413.
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
+// After a failed upload, a cold AI service is still cold — retrying
+// instantly just repeats the same failure. This blocks the button for a
+// few seconds so a frustrated recruiter mashing "try again" doesn't turn
+// one bad first impression into three.
+const RETRY_COOLDOWN_SECONDS = 8;
+
 export function ResumeUploadForm({
   onUploaded,
 }: {
@@ -26,6 +32,13 @@ export function ResumeUploadForm({
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown === 0) return;
+    const timer = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0] ?? null;
@@ -62,6 +75,7 @@ export function ResumeUploadForm({
           ? (err.response?.data?.message ?? "Upload failed")
           : "Upload failed";
       setError(message);
+      setCooldown(RETRY_COOLDOWN_SECONDS);
     } finally {
       setIsUploading(false);
     }
@@ -96,8 +110,15 @@ export function ResumeUploadForm({
         <p className="text-sm text-muted-foreground">Selected: {file.name}</p>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button onClick={handleUpload} disabled={!file || isUploading}>
-        {isUploading ? "Uploading & parsing..." : "Upload resume"}
+      <Button
+        onClick={handleUpload}
+        disabled={!file || isUploading || cooldown > 0}
+      >
+        {isUploading
+          ? "Uploading & parsing..."
+          : cooldown > 0
+            ? `Try again in ${cooldown}s`
+            : "Upload resume"}
       </Button>
     </div>
   );

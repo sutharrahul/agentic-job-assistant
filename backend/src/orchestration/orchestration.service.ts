@@ -134,4 +134,23 @@ export class OrchestrationService {
   }) {
     return this.post<InterviewPrepResponse>('/interview-prep', payload);
   }
+
+  // Fired proactively when an authenticated page mounts (see the frontend
+  // AiWarmup component) — not a real API call, just a nudge that starts
+  // the AI service's Render instance waking up before the user has
+  // actually clicked anything that needs it. Never throws: a slow or
+  // failed ping still triggers the wake-up on Render's side, so there's
+  // nothing useful to report back from a call the user never asked for.
+  async pingAiService(): Promise<{ status: 'ok' | 'unreachable' }> {
+    try {
+      await firstValueFrom(
+        this.httpService.get(`${this.baseUrl}/health`, {
+          headers: this.serviceHeaders,
+        }),
+      );
+      return { status: 'ok' };
+    } catch {
+      return { status: 'unreachable' };
+    }
+  }
 }
