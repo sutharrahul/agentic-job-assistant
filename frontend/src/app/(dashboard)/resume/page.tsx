@@ -151,12 +151,10 @@ export default function ResumePage() {
             <h2 className="font-heading text-base font-medium">
               Resume source
             </h2>
-            <ResumeUploadForm onUploaded={handleUploaded} />
-            {isReplacing && (
-              <Button variant="ghost" onClick={() => setIsReplacing(false)}>
-                Cancel
-              </Button>
-            )}
+            <ResumeUploadForm
+              onUploaded={handleUploaded}
+              onCancel={isReplacing ? () => setIsReplacing(false) : undefined}
+            />
           </div>
         )}
 

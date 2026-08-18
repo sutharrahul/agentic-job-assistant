@@ -25,8 +25,13 @@ const RETRY_COOLDOWN_SECONDS = 8;
 
 export function ResumeUploadForm({
   onUploaded,
+  onCancel,
 }: {
   onUploaded: (resume: Resume) => void;
+  // Only passed while replacing an existing resume — rendered next to
+  // Upload rather than the page stacking its own Cancel button below
+  // this component, so the pair reads as one decision, not two.
+  onCancel?: () => void;
 }) {
   const inputId = useId();
   const [file, setFile] = useState<File | null>(null);
@@ -110,16 +115,23 @@ export function ResumeUploadForm({
         <p className="text-sm text-muted-foreground">Selected: {file.name}</p>
       )}
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button
-        onClick={handleUpload}
-        disabled={!file || isUploading || cooldown > 0}
-      >
-        {isUploading
-          ? "Uploading & parsing..."
-          : cooldown > 0
-            ? `Try again in ${cooldown}s`
-            : "Upload resume"}
-      </Button>
+      <div className="flex items-center gap-2">
+        <Button
+          onClick={handleUpload}
+          disabled={!file || isUploading || cooldown > 0}
+        >
+          {isUploading
+            ? "Uploading & parsing..."
+            : cooldown > 0
+              ? `Try again in ${cooldown}s`
+              : "Upload resume"}
+        </Button>
+        {onCancel && (
+          <Button variant="ghost" onClick={onCancel} disabled={isUploading}>
+            Cancel
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
