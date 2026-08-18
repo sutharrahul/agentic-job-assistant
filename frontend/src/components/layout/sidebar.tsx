@@ -79,13 +79,7 @@ export function MobileTopBar() {
 
   return (
     <header className="flex items-center justify-between border-b bg-sidebar px-4 py-3 lg:hidden">
-      <Link href="/" className="flex items-center gap-2 font-label text-sm font-bold">
-        <Image src="/logo.webp" alt="" width={20} height={20} className="rounded-md" />
-        Fitmark
-      </Link>
-      <div className="flex items-center gap-2">
-        <ModeToggle />
-        <UserMenu />
+      <div className="flex items-center gap-3">
         <Sheet>
           <SheetTrigger render={<Button variant="outline" size="icon" />}>
             <Menu className="size-4" />
@@ -121,6 +115,14 @@ export function MobileTopBar() {
             </nav>
           </SheetContent>
         </Sheet>
+        <Link href="/" className="flex items-center gap-2 font-label text-sm font-bold">
+          <Image src="/logo.webp" alt="" width={20} height={20} className="rounded-md" />
+          Fitmark
+        </Link>
+      </div>
+      <div className="flex items-center gap-2">
+        <ModeToggle />
+        <UserMenu />
       </div>
     </header>
   );
